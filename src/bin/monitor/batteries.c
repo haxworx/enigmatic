@@ -1,0 +1,191 @@
+#include "system/machine.h"
+#include "batteries.h"
+#include "uid.h"
+#include "enigmatic_log.h"
+
+static void
+cb_battery_free(void *data)
+{
+   Battery *bat = data;
+
+   DEBUG("del %s", bat->name);
+
+   free(bat);
+}
+
+static int
+cb_battery_cmp(const void *a, const void *b)
+{
+   Battery *bat1, *bat2;
+
+   bat1 = (Battery *) a;
+   bat2 = (Battery *) b;
+
+   return strcmp(bat1->name, bat2->name);
+}
+
+static void
+batteries_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+{
+   Eina_List *ordered = NULL;
+   void *d = NULL;
+   Battery *bat;
+   int n;
+   Eina_Iterator *it = eina_hash_iterator_data_new(*cache_hash);
+
+   while (eina_iterator_next(it, &d))
+     {
+        bat = d;
+        ordered = eina_list_append(ordered, bat);
+     }
+   eina_iterator_free(it);
+
+   n = eina_list_count(ordered);
+   if (!n) return;
+
+   ordered = eina_list_sort(ordered, n, cb_battery_cmp);
+
+   Message msg;
+   msg.type = MESG_REFRESH;
+   msg.object_type = BATTERY;
+   msg.number = n;
+   enigmatic_log_list_write(enigmatic, EVENT_MESSAGE, msg, ordered, sizeof(Battery));
+   eina_list_free(ordered);
+}
+
+Eina_Bool
+monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+{
+   Eina_List *l, *batteries;
+   Battery *bat, *b;
+   Eina_Bool changed = 0;
+
+   batteries = batteries_find();
+   batteries_update(batteries);
+
+   if (!*cache_hash)
+     {
+        *cache_hash = eina_hash_string_superfast_new(cb_battery_free);
+        EINA_LIST_FOREACH(batteries, l, bat)
+          {
+             b = malloc(sizeof(Battery));
+             if (b)
+               {
+                  DEBUG("battery add: %s", bat->name);
+
+                  memcpy(b, bat, sizeof(Battery));
+                  b->unique_id = unique_id_find(&enigmatic->unique_ids);
+                  eina_hash_add(*cache_hash, b->name, b);
+               }
+          }
+     }
+
+   if (enigmatic->broadcast)
+     {
+        batteries_refresh(enigmatic, cache_hash);
+     }
+
+   void *d = NULL;
+   Eina_List *purge = NULL;
+
+   Eina_Iterator *it = eina_hash_iterator_data_new(*cache_hash);
+   while (eina_iterator_next(it, &d))
+     {
+        Battery *b = d;
+        Eina_Bool found = 0;
+        EINA_LIST_FOREACH(batteries, l, bat)
+          {
+             if (!strcmp(b->name, bat->name))
+               {
+                  found = 1;
+                  break;
+               }
+          }
+        if (!found)
+          purge = eina_list_prepend(purge, b);
+     }
+   eina_iterator_free(it);
+
+   EINA_LIST_FREE(purge, bat)
+     {
+        Message msg;
+        msg.type = MESG_DEL;
+        msg.object_type = BATTERY;
+        msg.number = bat->unique_id;
+        enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+
+        unique_id_release(&enigmatic->unique_ids, bat->unique_id);
+        eina_hash_del(*cache_hash, bat->name, NULL);
+     }
+   EINA_LIST_FREE(batteries, bat)
+     {
+        b = eina_hash_find(*cache_hash, bat->name);
+        if (!b)
+          {
+             bat->unique_id = unique_id_find(&enigmatic->unique_ids);
+
+             Message msg;
+             msg.type = MESG_ADD;
+             msg.object_type = BATTERY;
+             msg.number = 1;
+             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, bat, sizeof(Battery));
+
+             DEBUG("battery add: %s", bat->name);
+
+             eina_hash_add(*cache_hash, bat->name, bat);
+             continue;
+          }
+
+        float diff;
+
+        Message msg;
+        msg.type = MESG_MOD;
+
+        if (!EINA_DBL_EQ(b->percent, bat->percent))
+          {
+             Change change = CHANGE_FLOAT;
+             msg.object_type = BATTERY_PERCENT;
+             msg.number = b->unique_id;
+             diff = bat->percent - b->percent;
+             enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+             enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
+             enigmatic_log_write(enigmatic, (char *) &diff, sizeof(float));
+
+             DEBUG("%s :%i%%", b->name, (int) bat->percent - (int) b->percent);
+
+             changed = 1;
+          }
+
+        if (b->charge_full != bat->charge_full)
+          {
+             Message msg;
+             msg.type = MESG_MOD;
+             msg.object_type = BATTERY_FULL;
+             msg.number = b->unique_id;
+             enigmatic_log_diff(enigmatic, msg, bat->charge_full - b->charge_full);
+
+             DEBUG("%s (full) :%i", b->name, (int) bat->charge_full - (int) b->charge_full);
+             changed = 1;
+          }
+
+        if (b->charge_current != bat->charge_current)
+          {
+             Message msg;
+             msg.type = MESG_MOD;
+             msg.object_type = BATTERY_CURRENT;
+             msg.number = b->unique_id;
+             enigmatic_log_diff(enigmatic, msg, bat->charge_current - b->charge_current);
+
+             DEBUG("%s (current) :%i", b->name, (int) bat->charge_current - (int) b->charge_current);
+             changed = 1;
+          }
+        b->percent = bat->percent;
+        b->charge_full = bat->charge_full;
+        b->charge_current = bat->charge_current;
+
+        free(bat);
+     }
+
+   return changed;
+}
+

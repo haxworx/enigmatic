@@ -1,0 +1,13 @@
+sleep:
+        what to do after we sleep to save power while the
+        world mines crypto and no GPU to play ark??? :(
+playback:
+        when we rotate...what to do?
+
+portability:
+        Really need to avoid proc_info* function calls outside
+        of the logger otherwise linking is unacceptable and
+        also kvm requires setgid on OpenBSD...acceptable in
+        the main program...
+
+

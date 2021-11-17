@@ -1,0 +1,4 @@
+build/
+*.core
+*.swp
+massif.out*

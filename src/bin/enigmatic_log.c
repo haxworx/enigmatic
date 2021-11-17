@@ -1,0 +1,508 @@
+#include "config.h"
+#include "Enigmatic.h"
+#include "Events.h"
+#include "enigmatic_log.h"
+#include "enigmatic_util.h"
+#include "lz4.h"
+#include "lz4frame.h"
+
+#include <Ecore_File.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <time.h>
+#include <sys/file.h>
+#include <sys/mman.h>
+
+void
+enigmatic_log_header(Enigmatic *enigmatic, Event event, Message mesg)
+{
+   Header hdr;
+   Interval interval;
+   uint32_t time = enigmatic->poll_time;
+
+   interval = enigmatic->interval;
+   hdr.event = event;
+   hdr.time = time;
+   enigmatic_log_write(enigmatic, (char *) &hdr, sizeof(Header));
+
+   if (event == EVENT_BROADCAST)
+     {
+        enigmatic_log_write(enigmatic, (char *) &interval, sizeof(Interval));
+        static uint32_t specialfriend[4] = { HEADER_MAGIC, HEADER_MAGIC, HEADER_MAGIC, HEADER_MAGIC };
+        enigmatic_log_write(enigmatic, (char *) &specialfriend, sizeof(specialfriend));
+     }
+   switch (mesg.type)
+     {
+        case MESG_ERROR:
+        case MESG_REFRESH:
+        case MESG_ADD:
+        case MESG_MOD:
+        case MESG_DEL:
+          enigmatic_log_write(enigmatic, (char *) &mesg, sizeof(Message));
+          break;
+        default:
+          break;
+     }
+}
+
+static char *
+lockfile_path(void)
+{
+   char path[PATH_MAX];
+
+   snprintf(path, sizeof(path), "%s/%s", enigmatic_cache_dir_get(), PACKAGE);
+   if (!ecore_file_exists(path))
+     ecore_file_mkdir(path);
+
+   snprintf(path, sizeof(path), "%s/%s/%s", enigmatic_cache_dir_get(), PACKAGE, LCK_FILE_NAME);
+
+   return strdup(path);
+}
+
+void
+enigmatic_log_lock(Enigmatic *enigmatic)
+{
+   char *path = lockfile_path();
+
+   enigmatic->lock_fd = open(path, O_CREAT | O_RDONLY, 0666);
+   if (enigmatic->lock_fd == -1)
+     ERROR("open %s (%s)\n", path, strerror(errno));
+
+   if (flock(enigmatic->lock_fd, LOCK_EX | LOCK_NB) == -1)
+     {
+        if (errno != EWOULDBLOCK)
+          {
+             ERROR("flock  %s\n", strerror(errno));
+          }
+        else
+          {
+             fprintf(stdout, "Program already running!\n");
+             exit(0);
+          }
+     }
+   free(path);
+}
+
+void
+enigmatic_log_unlock(Enigmatic *enigmatic)
+{
+   char *path = lockfile_path();
+
+   flock(enigmatic->lock_fd, LOCK_UN);
+   unlink(path);
+   close(enigmatic->lock_fd);
+   free(path);
+}
+
+void
+enigmatic_log_obj_write(Enigmatic *enigmatic, Event event, Message mesg, void *obj, size_t size)
+{
+   char *buf;
+   Header *hdr;
+   ssize_t len;
+
+   len = sizeof(Header) + sizeof(mesg) + size;
+
+   buf = malloc(len);
+   EINA_SAFETY_ON_NULL_RETURN(buf);
+
+   hdr = (Header *) &buf[0];
+   hdr->time = enigmatic->poll_time;
+   hdr->event = event;
+
+   memcpy((char *) hdr + sizeof(Header), &mesg, sizeof(Message));
+   memcpy((char *) hdr + sizeof(Header) + sizeof(Message), obj, size);
+
+   enigmatic_log_write(enigmatic, buf, len);
+
+   free(buf);
+}
+
+void
+enigmatic_log_list_write(Enigmatic *enigmatic, Event event, Message mesg, Eina_List *list, size_t size)
+{
+   Eina_List *l;
+   char *buf;
+   int n;
+   ssize_t len;
+   Header *hdr;
+
+   n = eina_list_count(list);
+   if (!n) return;
+
+   len = sizeof(Header) + sizeof(Message) + (n * size);
+
+   buf = malloc(len);
+   EINA_SAFETY_ON_NULL_RETURN(buf);
+
+   hdr = (Header *) &buf[0];
+   hdr->time = enigmatic->poll_time;
+   hdr->event = event;
+
+   void *o;
+   char *addr = (char *) hdr + sizeof(Header);
+   memcpy(addr, &mesg, sizeof(Message));
+   addr += sizeof(Message);
+
+   EINA_LIST_FOREACH(list, l, o)
+     {
+        memcpy(addr, o, size);
+        addr += size;
+     }
+
+   enigmatic_log_write(enigmatic, buf, len);
+
+   free(buf);
+}
+
+void
+enigmatic_log_write(Enigmatic *enigmatic, const char *buf, size_t len)
+{
+   Buffer *buffer;
+   Log *file = enigmatic->log.file;
+
+   if (!file->buf.data)
+     {
+        buffer = &file->buf;
+        buffer->data = malloc(len);
+        EINA_SAFETY_ON_NULL_RETURN(buffer->data);
+        buffer->length = len;
+        memcpy(buffer->data, buf, len);
+     }
+   else
+     {
+        buffer = &file->buf;
+        void *tmp = realloc(buffer->data, buffer->length + len);
+        EINA_SAFETY_ON_NULL_RETURN(tmp);
+        buffer->data = tmp;
+        memcpy(&buffer->data[buffer->length], buf, len);
+        buffer->length += len;
+     }
+}
+
+void
+enigmatic_log_crush(Enigmatic *enigmatic)
+{
+   Buffer *buffer;
+   size_t sz, nw;
+   Log *file;
+   LZ4F_preferences_t prefs;
+
+   file = enigmatic->log.file;
+   buffer = &file->buf;
+
+   memset(&prefs, 0, sizeof(LZ4F_preferences_t));
+   prefs.frameInfo.blockSizeID = LZ4F_max256KB;
+   prefs.frameInfo.blockMode = LZ4F_blockLinked;
+   prefs.frameInfo.contentChecksumFlag = LZ4F_noContentChecksum;
+   prefs.frameInfo.frameType =  LZ4F_frame;
+   prefs.frameInfo.contentSize = 0;
+   prefs.frameInfo.dictID = 0;
+   prefs.frameInfo.blockChecksumFlag = LZ4F_noBlockChecksum;
+   prefs.compressionLevel = 0;
+   prefs.autoFlush = 0;
+   prefs.favorDecSpeed = 0;
+
+   size_t outlen = LZ4F_compressFrameBound(buffer->length, &prefs);
+   char *out = malloc(outlen);
+   EINA_SAFETY_ON_NULL_RETURN(out);
+
+   sz = LZ4F_compressFrame(out, outlen, buffer->data, buffer->length, &prefs);
+   if ((nw = write(file->fd, out, sz)) == 0 || nw == -1 || nw != sz)
+     ERROR("write () %s", strerror(errno));
+   free(out);
+
+   free(buffer->data);
+   buffer->data = NULL;
+   buffer->length = 0;
+}
+
+void
+enigmatic_log_flush(Enigmatic *enigmatic)
+{
+   size_t nw;
+   Buffer *buffer;
+   Log *file = enigmatic->log.file;
+
+   buffer = &file->buf;
+   if (!buffer->length) return;
+
+   if ((nw = write(file->fd, buffer->data, buffer->length)) == 0 || nw == -1 || nw != buffer->length)
+     ERROR("write() %s", strerror(errno));
+
+   free(buffer->data);
+   buffer->data = NULL;
+   buffer->length = 0;
+}
+
+Log *
+enigmatic_log_open(Enigmatic *enigmatic)
+{
+   Log *file;
+   int fd, flags;
+   struct tm *tm_now;
+   time_t t = time(NULL);
+
+   tm_now = localtime(&t);
+
+   enigmatic->log.path = enigmatic_log_path();
+
+   enigmatic->log.file = file = calloc(1, sizeof(Log));
+   if (!file) return NULL;
+
+   flags = O_CREAT | O_WRONLY | O_TRUNC;
+   fd = open(enigmatic->log.path, flags, 0600);
+   if (fd == -1)
+     {
+        free(file);
+        return NULL;
+     }
+
+   file->fd = fd;
+   file->flags = flags;
+
+   enigmatic->log.file = file;
+   enigmatic->log.hour = tm_now->tm_hour;
+   enigmatic->log.min = tm_now->tm_min;
+
+   return file;
+}
+
+void
+enigmatic_log_close(Enigmatic *enigmatic)
+{
+   Log *file = enigmatic->log.file;
+
+   LOG_HEADER(enigmatic, EVENT_LAST_RECORD);
+   enigmatic_log_crush(enigmatic);
+
+   if (file->fd != -1)
+     {
+        close(file->fd);
+        file->fd = -1;
+     }
+   if (file->buf.data)
+     free(file->buf.data);
+
+   free(enigmatic->log.path);
+   free(file);
+   file = NULL;
+}
+
+Eina_Bool
+enigmatic_log_compress(const char *path)
+{
+   FILE *f;
+   void *t;
+   int fd;
+   char *out;
+   int length;
+   struct stat st;
+   uint32_t size;
+   uint8_t *map;
+   char path2[PATH_MAX];
+   Eina_Bool ret = 0;
+
+   fd = open(path, O_RDONLY);
+   if (fd == -1) return 0;
+
+   if (fstat(fd, &st) == -1) ERROR("fstat() %s\n", strerror(errno));
+
+   size = st.st_size;
+
+   map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+   if (map == MAP_FAILED)
+     ERROR("mmap()");
+
+   length = LZ4_compressBound(size);
+   out = malloc(length);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(out, 0);
+
+   length = LZ4_compress_default((const char *) map, out, size, length);
+   t = realloc(out, length);
+   out = t;
+
+   snprintf(path2, sizeof(path2), "%s.lz4", path);
+
+   f = fopen(path2, "wb");
+   if (f)
+     {
+        if (fwrite(out, 1, length, f) == length)
+          ret = 1;
+        fclose(f);
+        snprintf(path2, sizeof(path2), "%s.lz4.size", path);
+        f = fopen(path2, "w");
+        if (f)
+          {
+             fprintf(f, "%"PRIu32, size);
+             fclose(f);
+          }
+     }
+
+   free(out);
+   munmap(map, st.st_size);
+   close(fd);
+
+   return ret;
+}
+
+static uint32_t
+_decompress_size(const char *path)
+{
+   FILE *f;
+   char path2[PATH_MAX];
+   char buf[128];
+   uint32_t newsize = 0;
+
+   snprintf(path2, sizeof(path2), "%s.size", path);
+
+   f = fopen(path2, "r");
+   if (!f) return 0;
+
+   if (fgets(buf, sizeof(buf), f))
+     newsize = atoll(buf);
+
+   fclose(f);
+
+   return newsize;
+}
+
+char *
+enigmatic_log_decompress(const char *path, uint32_t *length)
+{
+   int fd;
+   struct stat st;
+   char *map;
+   char *out;
+   int len;
+   uint32_t newsize = 0;
+
+   *length = 0;
+
+   fd = open(path, O_RDONLY);
+   if (fd == -1) return NULL;
+
+   if (fstat(fd, &st) == -1) ERROR("fstat() %s", strerror(errno));
+
+   map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+   if (map == MAP_FAILED)
+     ERROR("mmap()");
+
+   newsize = _decompress_size(path);
+
+   out = malloc(newsize);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(out, NULL);
+
+   len = LZ4_decompress_safe((const char *) map, out, st.st_size, newsize);
+   if (len < 0)
+     ERROR("LZ4_decompress_safe missing %i", len);
+
+   munmap(map, st.st_size);
+   close(fd);
+   *length = len;
+
+   return out;
+}
+
+static void *
+cb_enigmatic_log_compress(void *data, Eina_Thread tid EINA_UNUSED)
+{
+   char *path = data;
+
+   if (enigmatic_log_compress(path))
+     unlink(path);
+   free(path);
+
+   return NULL;
+}
+
+Eina_Bool
+enigmatic_log_rotate(Enigmatic *enigmatic)
+{
+   struct tm *tm_now;
+   char *path = NULL;
+   char saved[PATH_MAX];
+   time_t t = time(NULL);
+   Eina_Thread tid;
+   Eina_Bool ok;
+
+   if (enigmatic->log.hour == -1)
+     return 0;
+
+   tm_now = localtime(&t);
+
+   if ((enigmatic->log.rotate_every_hour) && (enigmatic->log.hour == tm_now->tm_hour))
+     return 0;
+
+   if ((enigmatic->log.rotate_every_minute) && (enigmatic->log.hour == tm_now->tm_hour) && (enigmatic->log.min == tm_now->tm_min))
+     return 0;
+
+   LOG_HEADER(enigmatic, EVENT_EOF);
+   enigmatic_log_close(enigmatic);
+
+   if (!enigmatic->log.save_history)
+     {
+        enigmatic_log_open(enigmatic);
+        return 1;
+     }
+
+   if (enigmatic->log.rotate_every_hour)
+     snprintf(saved, sizeof(saved), "%s/%s/%02i", enigmatic_cache_dir_get(), PACKAGE, enigmatic->log.hour);
+
+   if (enigmatic->log.rotate_every_minute)
+     snprintf(saved, sizeof(saved), "%s/%s/%02i-%02i", enigmatic_cache_dir_get(), PACKAGE, enigmatic->log.hour, enigmatic->log.min);
+
+   path = enigmatic_log_path();
+   ecore_file_cp(path, saved);
+   free(path);
+
+   enigmatic_log_open(enigmatic);
+
+   ok = eina_thread_create(&tid, EINA_THREAD_BACKGROUND, -1, cb_enigmatic_log_compress, strdup(saved));
+   if (!ok)
+     ERROR("eina_thread_create: cb_enigmatic_log_compress");
+
+   return 1;
+}
+
+void
+enigmatic_log_diff(Enigmatic *enigmatic, Message msg, int64_t value)
+{
+   Change change;
+
+   if ((value >= -128) && (value <= 127))
+     {
+        change = CHANGE_I8;
+        int8_t diff = (int8_t) value & 0xff;
+        enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+        enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
+        enigmatic_log_write(enigmatic, (char *) &diff, sizeof(int8_t));
+     }
+   else if ((value >= -32678) && (value <= 32767))
+     {
+        change = CHANGE_I16;
+        int16_t diff = (int16_t) value & 0xffff;
+        enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+        enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
+        enigmatic_log_write(enigmatic, (char *) &diff, sizeof(int16_t));
+     }
+   else if ((value >= -2147483648) && (value <= 2147483647))
+     {
+        change = CHANGE_I32;
+        int32_t diff = (int32_t) value & 0xffffffff;
+        enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+        enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
+        enigmatic_log_write(enigmatic, (char *) &diff, sizeof(int32_t));
+     }
+   else
+     {
+        change = CHANGE_I64;
+        int64_t diff = value;
+        enigmatic_log_header(enigmatic, EVENT_MESSAGE, msg);
+        enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
+        enigmatic_log_write(enigmatic, (char *) &diff, sizeof(int64_t));
+     }
+}
