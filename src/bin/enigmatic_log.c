@@ -327,7 +327,6 @@ enigmatic_log_compress(const char *path, Eina_Bool staggered)
    EINA_SAFETY_ON_NULL_RETURN_VAL(f, 0);
 
    int newlength = 0;
-   char *dest = out;
 
    for (int off = 0; off < st.st_size; off += BLOCK_SIZE)
      {
@@ -339,7 +338,6 @@ enigmatic_log_compress(const char *path, Eina_Bool staggered)
         int sz = LZ4_compress_default((char *) map + off, out + newlength, size, length);
         fprintf(f, "%i-%i,", size, sz);
         newlength += sz;
-        dest += sz;
         if (staggered) usleep(75000);
      }
    fclose(f);
