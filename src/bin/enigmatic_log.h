@@ -50,7 +50,7 @@ void
 enigmatic_log_unlock(Enigmatic *enigmatic);
 
 Eina_Bool
-enigmatic_log_compress(const char *path);
+enigmatic_log_compress(const char *path, Eina_Bool staggered);
 
 char *
 enigmatic_log_decompress(const char *path, uint32_t *length);

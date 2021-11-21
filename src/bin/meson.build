@@ -54,3 +54,4 @@ endif
 
 subdir('client')
 subdir('examples')
+subdir('tests')
