@@ -12,17 +12,3 @@ src_client += files([
    'enigmatic_client.c',
 ])
 
-src_test = src_client
-
-src_test += files([
-   'enigmatic_test.c',
-])
-
-executable('enigmatic_test', src_test,
-   include_directories     : [ inc_client ],
-   dependencies            : [ dep_client, dep_elm ],
-   link_with               : lz4_lib,
-   gui_app                 : false,
-   install                 : true)
-
-

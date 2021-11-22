@@ -28,3 +28,16 @@ executable('blindmin', src_blind,
    link_with               : lz4_lib,
    gui_app                 : false,
    install                 : true)
+
+src_test = src_client
+src_test += files([
+   'enigmatic_client.c',
+])
+
+executable('enigmatic_client', src_test,
+   include_directories     : [ inc_client ],
+   dependencies            : [ dep_client, dep_elm ],
+   link_with               : lz4_lib,
+   gui_app                 : false,
+   install                 : true)
+
