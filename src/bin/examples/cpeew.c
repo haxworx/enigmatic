@@ -1,77 +1,70 @@
 #include "Enigmatic_Client.h"
+#include "colors.h"
 #include <Elementary.h>
 
-static Evas_Object *_win, *_bx;
-
-static Eina_List *_bars = NULL;
+static Evas_Object *_table = NULL;
+static Eina_List *_objects = NULL;
 
 static void
 cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
 {
-   char buf[32];
-   struct tm tm_out;
-   time_t t = (time_t) s->time;
-
-   if (!client_event_is_snapshot(client)) return;
-
-   localtime_r((time_t *) &t, &tm_out);
-   strftime(buf, sizeof(buf) - 1, "%Y-%m-%d %H:%M:%S", &tm_out);
-
-   printf("%s\n", buf);
-
    Eina_List *l;
    Cpu_Core *core;
 
    int n = 0;
    EINA_LIST_FOREACH(s->cores, l, core)
      {
-        printf("%s\t=> %i%% => %i => %iC\n", core->name, core->percent, core->freq, core->temp);
-        Evas_Object *pb = eina_list_nth(_bars, n++);
-        elm_progressbar_value_set(pb, core->percent / 100.0);
+        Evas_Object *lb = eina_list_nth(_objects, n++);
+        Evas_Object *rec = evas_object_data_get(lb, "r");
+        int c = cpu_colormap[core->percent & 0xff];
+        evas_object_color_set(rec, RVAL(c), GVAL(c), BVAL(c), AVAL(c));
+        elm_object_text_set(lb, eina_slstr_printf("%i%%", core->percent));
      }
 }
 
-static void
-cb_cpu_add(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
+static int
+_row(int n)
 {
-   Cpu_Core *core = event->data;
-   printf("add %s => %i\n", core->name, core->id);
-}
-
-static void
-cb_cpu_del(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
-{
-   Cpu_Core *core = event->data;
-   printf("del %s => %i\n", core->name, core->id);
-}
-
-static void
-cb_recording_delay(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
-{
-   int *delay = event->data;
-   printf("gap %i => total %i secs\n", event->time, *delay);
+   double i, f, value = sqrt(n);
+   f = modf(value, &i);
+   if (EINA_DBL_EQ(f, 0.0)) return value;
+   return value + 1;
 }
 
 static void
 cb_event_change_init(Enigmatic_Client *client, Snapshot *s, void *data)
 {
-   Evas_Object *bx;
+   Evas_Object *tb, *rec, *lb;
    Eina_List *l, *cores = s->cores;
 
-   client_event_callback_add(client, EVENT_CPU_ADD, cb_cpu_add, NULL);
-   client_event_callback_add(client, EVENT_CPU_DEL, cb_cpu_del, NULL);
-   client_event_callback_add(client, EVENT_RECORD_DELAY, cb_recording_delay, NULL);
+   tb = _table;
 
-   bx = _bx;
+   int i = 0, row = 0, col = 0, w = _row(eina_list_count(s->cores));
 
    Cpu_Core *core;
    EINA_LIST_FOREACH(cores, l, core)
      {
-        Evas_Object *pb = elm_progressbar_add(_win);
-        elm_progressbar_span_size_set(pb, 120);
-        evas_object_show(pb);
-        _bars = eina_list_append(_bars, pb);
-        elm_box_pack_end(bx, pb);
+        if (!(i % w))
+          {
+             row++;
+             col = 0;
+          }
+        else col++;
+
+        rec = evas_object_rectangle_add(evas_object_evas_get(tb));
+        evas_object_size_hint_min_set(rec, ELM_SCALE_SIZE(64), ELM_SCALE_SIZE(64));
+        elm_table_pack(tb, rec, col, row, 1, 1);
+        evas_object_show(rec);
+
+        lb = elm_label_add(tb);
+        evas_object_size_hint_weight_set(lb, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+        evas_object_size_hint_align_set(lb, EVAS_HINT_FILL, EVAS_HINT_FILL);
+        elm_table_pack(tb, lb, col, row, 1, 1);
+        evas_object_show(lb);
+
+        evas_object_data_set(lb, "r", rec);
+        _objects = eina_list_append(_objects, lb);
+        i++;
      }
 }
 
@@ -79,39 +72,43 @@ static void
 cb_win_del(void *data EINA_UNUSED, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event EINA_UNUSED)
 {
    ecore_main_loop_quit();
-   eina_list_free(_bars);
+   eina_list_free(_objects);
 }
 
 int
 elm_main(int argc, char **argv)
 {
-   Evas_Object *win, *scr, *bx;
+   Evas_Object *win, *bx, *tb;
    Enigmatic_Client *client;
 
    if (!enigmatic_launch()) return 1;
 
+   colors_init();
+
    client = client_open();
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, 1);
 
-   _win = win = elm_win_util_standard_add("cpeew", NULL);
-   evas_object_size_hint_weight_set(win, 1.0, 1.0);
-   evas_object_size_hint_align_set(win, -1.0, -1.0);
+   elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
+   win = elm_win_util_standard_add("cpeew", NULL);
+   evas_object_size_hint_weight_set(win, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(win, EVAS_HINT_FILL, EVAS_HINT_FILL);
    elm_win_autodel_set(win, 1);
    evas_object_event_callback_add(win, EVAS_CALLBACK_DEL, cb_win_del, NULL);
-
-   scr = elm_scroller_add(win);
-   evas_object_size_hint_weight_set(scr, 1.0, 1.0);
-   evas_object_size_hint_align_set(scr, -1.0, -1.0);
-   evas_object_show(scr);
-
-   _bx = bx = elm_box_add(win);
-   evas_object_size_hint_weight_set(bx, 1.0, 1.0);
-   evas_object_size_hint_align_set(bx, -1.0, -1.0);
+   
+   bx = elm_box_add(win);
+   evas_object_size_hint_weight_set(bx, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(bx, EVAS_HINT_FILL, EVAS_HINT_FILL);
    evas_object_show(bx);
 
-   elm_object_content_set(scr, bx);
-   elm_object_content_set(win, scr);
-   evas_object_resize(win, 160, 240);
+   _table = tb = elm_table_add(win);
+   evas_object_size_hint_weight_set(tb, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(tb, 0.5, 0.5);
+
+   elm_box_pack_end(bx, tb);
+   evas_object_show(tb);
+
+   elm_object_content_set(win, bx);
+   evas_object_resize(win, ELM_SCALE_SIZE(320), ELM_SCALE_SIZE(320));
    elm_win_center(win, 1, 1);
    evas_object_show(win);
 

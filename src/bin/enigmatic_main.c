@@ -137,25 +137,37 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    enigmatic_pidfile_delete(enigmatic);
 }
 
-/*
- *
 void
 usage(void)
 {
    printf("%s [OPTIONS]\n"
           "Where OPTIONS can one of: \n"
-          "   -c                 Get instances running count.\n"
-          "   --yes-really-nuke  Terminate all instances.\n"
+          "   -s                 Stop enigmatic daemon.\n"
           "   -h | --help        This menu.\n",
           PACKAGE);
    exit(0);
 }
-*/
 
 int main(int argc, char **argv)
 {
+   Eina_Bool shutdown = EINA_FALSE;
+
+   for (int i = 1; i < argc; i++)
+     {
+        if ((!strcasecmp(argv[i], "-h")) || (!strcasecmp(argv[i], "--help")))
+          usage();
+        else if (!strcmp(argv[i], "-s"))
+          {
+             shutdown = EINA_TRUE;
+             break;
+          }
+     }
+
    ecore_init();
 
+   if (shutdown)
+     enigmatic_terminate();
+   else
      {
         Enigmatic *enigmatic = calloc(1, sizeof(Enigmatic));
         EINA_SAFETY_ON_NULL_RETURN_VAL(enigmatic, 1);
