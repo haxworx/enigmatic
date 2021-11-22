@@ -5,7 +5,7 @@ src_cpu = []
 src_cpu += src_client
 
 src_cpu += files([
-   'cpu.c',
+   'cpeew.c',
 ])
 
 executable('cpeew', src_cpu,
