@@ -3,6 +3,10 @@
 #include "uid.h"
 #include "enigmatic_log.h"
 
+static Eina_List *batteries = NULL;
+static Eina_Lock batteries_lock;
+static Ecore_Thread *thread = NULL;
+
 static void
 cb_battery_free(void *data)
 {
@@ -53,15 +57,61 @@ batteries_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
    eina_list_free(ordered);
 }
 
-Eina_Bool
-monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+static void
+battery_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 {
-   Eina_List *l, *batteries;
-   Battery *bat, *b;
-   Eina_Bool changed = 0;
+   uint32_t it = 0;
+   while (!ecore_thread_check(thread))
+     {
+        eina_lock_take(&batteries_lock);
+        if ((it) && (!(it % 10)))
+          {
+             Battery *bat;
+             EINA_LIST_FREE(batteries, bat)
+               free(bat);
+             batteries = batteries_find();
+          }
+        batteries_update(batteries);
+        eina_lock_release(&batteries_lock);
+        for (int i = 0; i < 20; i++)
+          {
+             if (ecore_thread_check(thread)) return;
+             usleep(50000);
+          }
+        it++;
+     }
+}
+
+void
+monitor_batteries_init(void)
+{
+   eina_lock_new(&batteries_lock);
 
    batteries = batteries_find();
    batteries_update(batteries);
+}
+
+void
+monitor_batteries_shutdown(void)
+{
+   Battery *bat;
+   ecore_thread_cancel(thread);
+   ecore_thread_wait(thread, 1.0);
+   EINA_LIST_FREE(batteries, bat)
+     free(bat);
+   eina_lock_take(&batteries_lock);
+   eina_lock_release(&batteries_lock);
+   eina_lock_free(&batteries_lock);
+}
+
+Eina_Bool
+monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+{
+   Eina_List *l;
+   Battery *bat, *b;
+   Eina_Bool changed = 0;
+
+   if (eina_lock_take_try(&batteries_lock) != EINA_LOCK_SUCCEED) return 0;
 
    if (!*cache_hash)
      {
@@ -78,6 +128,8 @@ monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
                   eina_hash_add(*cache_hash, b->name, b);
                }
           }
+
+        enigmatic->battery_thread = thread = ecore_thread_run(battery_thread, NULL, NULL, NULL);
      }
 
    if (enigmatic->broadcast)
@@ -117,7 +169,7 @@ monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         unique_id_release(&enigmatic->unique_ids, bat->unique_id);
         eina_hash_del(*cache_hash, bat->name, NULL);
      }
-   EINA_LIST_FREE(batteries, bat)
+   EINA_LIST_FOREACH(batteries, l, bat)
      {
         b = eina_hash_find(*cache_hash, bat->name);
         if (!b)
@@ -182,9 +234,9 @@ monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         b->percent = bat->percent;
         b->charge_full = bat->charge_full;
         b->charge_current = bat->charge_current;
-
-        free(bat);
      }
+
+   eina_lock_release(&batteries_lock);
 
    return changed;
 }

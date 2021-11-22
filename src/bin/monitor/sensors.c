@@ -3,6 +3,10 @@
 #include "uid.h"
 #include "enigmatic_log.h"
 
+static Eina_List     *sensors = NULL;
+static Ecore_Thread  *thread = NULL;
+static Eina_Lock      sensors_lock;
+
 void
 sensor_key(char *buf, size_t len, Sensor *sensor)
 {
@@ -65,17 +69,64 @@ sensors_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
    eina_list_free(ordered);
 }
 
+static void
+sensors_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
+{
+   uint32_t it = 0;
+
+   while (!ecore_thread_check(thread))
+     {
+        eina_lock_take(&sensors_lock);
+        if ((it) && (!(it % 20)))
+          {
+             Sensor *sensor;
+             EINA_LIST_FREE(sensors, sensor)
+               free(sensor);
+             sensors = sensors_find();
+          }
+        sensors_update(sensors);
+        eina_lock_release(&sensors_lock);
+        for (int i = 0; i < 20; i++)
+          {
+             if (ecore_thread_check(thread)) return;
+             usleep(50000);
+          }
+        it++;
+     }
+}
+
+void
+monitor_sensors_init(void)
+{
+   eina_lock_new(&sensors_lock);
+
+   sensors = sensors_find();
+   sensors_update(sensors);
+}
+
+void
+monitor_sensors_shutdown(void)
+{
+   Sensor *sensor;
+
+   ecore_thread_cancel(thread);
+   ecore_thread_wait(thread, 1.0);
+   EINA_LIST_FREE(sensors, sensor)
+     free(sensor);
+   eina_lock_take(&sensors_lock);
+   eina_lock_release(&sensors_lock);
+   eina_lock_free(&sensors_lock);
+}
+
 Eina_Bool
 monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
-   Eina_List *l, *sensors;
+   Eina_List *l;
    Sensor *sensor, *s;
    char key[1024];
    Eina_Bool changed = 0;
 
-   sensors = sensors_find();
-   // XXX: EXPENSIVE
-   sensors_update(sensors);
+   if (eina_lock_take_try(&sensors_lock) != EINA_LOCK_SUCCEED) return 0;
 
    if (!*cache_hash)
      {
@@ -92,6 +143,7 @@ monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
                   eina_hash_add(*cache_hash, key, s);
                }
           }
+        enigmatic->sensors_thread = thread = ecore_thread_run(sensors_thread, NULL, NULL, NULL);
      }
 
    if (enigmatic->broadcast)
@@ -136,7 +188,7 @@ monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         eina_hash_del(*cache_hash, key, NULL);
      }
 
-   EINA_LIST_FREE(sensors, sensor)
+   EINA_LIST_FOREACH(sensors, l, sensor)
      {
         sensor_key(key, sizeof(key), sensor);
         s = eina_hash_find(*cache_hash, key);
@@ -171,8 +223,9 @@ monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
              changed = 1;
           }
         s->value = sensor->value;
-        free(sensor);
      }
+
+   eina_lock_release(&sensors_lock);
 
    return changed;
 }

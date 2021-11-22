@@ -18,6 +18,9 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
 {
    Enigmatic *enigmatic = data;
 
+   monitor_batteries_shutdown();
+   monitor_sensors_shutdown();
+
    if (enigmatic->thread)
      {
         ecore_thread_cancel(enigmatic->thread);
@@ -168,6 +171,9 @@ int main(int argc, char **argv)
         enigmatic_init(enigmatic);
 
         enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
+
+        monitor_batteries_init();
+        monitor_sensors_init();
 
         enigmatic->thread = ecore_thread_feedback_run(cb_system_log,
                                                       cb_system_log_feedback,

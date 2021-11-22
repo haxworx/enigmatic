@@ -6,4 +6,10 @@
 Eina_Bool
 monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash);
 
+void
+monitor_batteries_init(void);
+
+void
+monitor_batteries_shutdown(void);
+
 #endif

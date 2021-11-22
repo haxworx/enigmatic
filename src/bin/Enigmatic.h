@@ -87,6 +87,9 @@ struct _Enigmatic
       Eina_Bool         rotate_every_hour;
       Eina_Bool         rotate_every_minute;
    } log;
+
+   Ecore_Thread        *battery_thread;
+   Ecore_Thread        *sensors_thread;
 };
 
 #include "enigmatic_util.h"
