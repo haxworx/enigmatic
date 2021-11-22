@@ -12,6 +12,7 @@ cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
    Cpu_Core *core;
    Eina_Bool have_freq = cores_frequency();
 
+   if (!(client->changes & CPU_CORE)) return;
    int n = 0;
    EINA_LIST_FOREACH(s->cores, l, core)
      {
