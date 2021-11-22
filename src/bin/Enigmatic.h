@@ -56,18 +56,6 @@ typedef struct
 
 typedef struct _Enigmatic Enigmatic;
 
-typedef struct
-{
-   Eina_Bool (*cores)(Enigmatic *, Eina_Hash **);
-   Eina_Bool (*memory)(Enigmatic *, Meminfo *);
-   Eina_Bool (*sensors)(Enigmatic *, Eina_Hash **);
-   Eina_Bool (*batteries)(Enigmatic *, Eina_Hash **);
-   Eina_Bool (*power)(Enigmatic *, Eina_Bool *);
-   Eina_Bool (*file_systems)(Enigmatic *, Eina_Hash **);
-   Eina_Bool (*network)(Enigmatic *, Eina_Hash **);
-   Eina_Bool (*processes)(Enigmatic *, Eina_Hash **);
-} Monitor;
-
 struct _Enigmatic
 {
    Ecore_Thread        *thread;
@@ -88,8 +76,6 @@ struct _Enigmatic
 
    pid_t                pid;
    char                *pidfile_path;
-
-   Monitor              monitor;
 
    struct
    {

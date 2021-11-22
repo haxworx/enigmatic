@@ -1,7 +1,6 @@
 inc = include_directories('.', '../..')
 
 src_monitor = files([
-   'monitor.c',
    'cores.c',
    'cores.h',
    'memory.c',

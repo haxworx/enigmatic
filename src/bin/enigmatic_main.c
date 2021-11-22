@@ -34,16 +34,11 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
 static void
 cb_system_log(void *data, Ecore_Thread *thread)
 {
-   Enigmatic *enigmatic;
    System_Info *info;
-   Monitor *mon;
-
-   enigmatic = data;
+   Enigmatic *enigmatic = data;
 
    enigmatic->info = info = calloc(1, sizeof(System_Info));
    EINA_SAFETY_ON_NULL_RETURN(enigmatic->info);
-
-   mon = &enigmatic->monitor;
 
    while (!ecore_thread_check(thread))
      {
@@ -56,20 +51,20 @@ cb_system_log(void *data, Ecore_Thread *thread)
           LOG_HEADER(enigmatic, EVENT_BROADCAST);
 
         if (enigmatic->interval == INTERVAL_NORMAL)
-          mon->cores(enigmatic, &info->cores);
+          monitor_cores(enigmatic, &info->cores);
 
         if ((enigmatic->broadcast) || (!(enigmatic->poll_count % (enigmatic->interval * 10))))
           {
              if (enigmatic->interval != INTERVAL_NORMAL)
-               mon->cores(enigmatic, &info->cores);
+               monitor_cores(enigmatic, &info->cores);
 
-             mon->memory(enigmatic, &info->meminfo);
-             mon->sensors(enigmatic, &info->sensors);
-             mon->power(enigmatic, &info->power);
-             mon->batteries(enigmatic, &info->batteries);
-             mon->network(enigmatic, &info->network_interfaces);
-             mon->file_systems(enigmatic, &info->file_systems);
-             mon->processes(enigmatic, &info->processes);
+             monitor_memory(enigmatic, &info->meminfo);
+             monitor_sensors(enigmatic, &info->sensors);
+             monitor_power(enigmatic, &info->power);
+             monitor_batteries(enigmatic, &info->batteries);
+             monitor_network_interfaces(enigmatic, &info->network_interfaces);
+             monitor_file_systems(enigmatic, &info->file_systems);
+             monitor_processes(enigmatic, &info->processes);
 
              LOG_HEADER(enigmatic, EVENT_BLOCK_END);
           }
@@ -117,8 +112,6 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic->interval = INTERVAL_NORMAL;
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
-
-   monitor_init(&enigmatic->monitor);
 
    enigmatic_log_open(enigmatic);
 }
