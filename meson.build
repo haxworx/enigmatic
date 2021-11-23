@@ -12,6 +12,7 @@ host_os = host_machine.system()
 cc = meson.get_compiler('c')
 
 dep_eina = dependency('eina', version: efl_version)
+dep_eet = dependency('eet', version: efl_version)
 dep_ecore = dependency('ecore', version: efl_version)
 dep_ecore_file = dependency('ecore-file', version: efl_version)
 dep_efreet = dependency('efreet', version: efl_version)

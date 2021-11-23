@@ -1,4 +1,5 @@
 #include "Enigmatic.h"
+#include "enigmatic_config.h"
 #include "monitor/monitor.h"
 #include "enigmatic_log.h"
 
@@ -123,6 +124,10 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
 
+   enigmatic_config_init();
+
+   enigmatic->config = enigmatic_config_load();
+
    enigmatic_log_open(enigmatic);
 
    monitor_batteries_init();
@@ -135,6 +140,8 @@ enigmatic_shutdown(Enigmatic *enigmatic)
 {
    void *id;
 
+   enigmatic_config_save(enigmatic->config);
+
    enigmatic_log_close(enigmatic);
 
    EINA_LIST_FREE(enigmatic->unique_ids, id)
@@ -146,6 +153,8 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    monitor_batteries_shutdown();
    monitor_sensors_shutdown();
    monitor_power_shutdown();
+
+   enigmatic_config_shutdown();
 }
 
 void

@@ -20,6 +20,7 @@
 #include <Ecore.h>
 #include <Ecore_File.h>
 
+#include "enigmatic_config.h"
 #include "Events.h"
 #include "system/machine.h"
 #include "system/process.h"
@@ -73,6 +74,8 @@ struct _Enigmatic
    Eina_Bool            broadcast;
    Eina_Bool            close_on_parent_exit;
    int                  device_refresh_interval;
+
+   Enigmatic_Config    *config;
 
    pid_t                pid;
    char                *pidfile_path;
