@@ -54,9 +54,8 @@ cb_system_log(void *data, Ecore_Thread *thread)
      {
         clock_gettime(CLOCK_REALTIME, &ts);
         enigmatic->poll_time = ts.tv_sec;
-#if DEBUGTIME
+
         int64_t tdiff = ts.tv_nsec + (ts.tv_sec * 1000000000);
-#endif
 
         if (enigmatic_log_rotate(enigmatic))
           enigmatic->broadcast = 1;
@@ -91,12 +90,17 @@ cb_system_log(void *data, Ecore_Thread *thread)
           enigmatic->broadcast = 1;
 
         enigmatic->poll_count++;
-#if DEBUGTIME
-        clock_gettime(CLOCK_REALTIME, &ts);
-        printf("%ld\n", ((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff);
-#endif
 
-        usleep(1000000 / 10);
+        clock_gettime(CLOCK_REALTIME, &ts);
+        int usecs = (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff) / 1000;
+        if (usecs > 100000) usecs = 100000;
+
+        usleep((1000000 / 10) - usecs);
+#if DEBUGTIME
+        printf("usecs is %i\n", usecs);
+        clock_gettime(CLOCK_REALTIME, &ts);
+        printf("want 100000 got %ld\n", (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff)/ 1000);
+#endif
      }
 
    system_info_free(info);
