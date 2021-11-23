@@ -87,13 +87,8 @@ enigmatic_config_load(void)
                   exit(1);
                }
              eet_close(f);
-             if (config->version < ENIGMATIC_CONFIG_VERSION)
-               {
-                  free(config);
-                  fprintf(stderr, "reinitialising config\n");
-                  config = _config_defaults();
-               }
-             else if (config->version > ENIGMATIC_CONFIG_VERSION)
+
+             if (config->version != ENIGMATIC_CONFIG_VERSION)
                {
                   fprintf(stderr, "config version mismatch.\n");
                   exit(1);
