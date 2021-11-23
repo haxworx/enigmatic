@@ -89,6 +89,7 @@ struct _Enigmatic
    } log;
 
    Ecore_Thread        *battery_thread;
+   Ecore_Thread        *power_thread;
    Ecore_Thread        *sensors_thread;
 };
 

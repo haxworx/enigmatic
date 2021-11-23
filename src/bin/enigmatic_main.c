@@ -18,14 +18,19 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
 {
    Enigmatic *enigmatic = data;
 
-   monitor_batteries_shutdown();
-   monitor_sensors_shutdown();
-
    if (enigmatic->thread)
      {
         ecore_thread_cancel(enigmatic->thread);
         ecore_thread_wait(enigmatic->thread, 1.0);
      }
+
+   ecore_thread_cancel(enigmatic->battery_thread);
+   ecore_thread_cancel(enigmatic->sensors_thread);
+   ecore_thread_cancel(enigmatic->power_thread);
+
+   ecore_thread_wait(enigmatic->battery_thread, 1.0);
+   ecore_thread_wait(enigmatic->sensors_thread, 1.0);
+   ecore_thread_wait(enigmatic->power_thread, 1.0);
 
    ecore_event_handler_del(enigmatic->handler);
 
@@ -34,10 +39,12 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
    return 0;
 }
 
+#define DEBUGTIME 1
 static void
 cb_system_log(void *data, Ecore_Thread *thread)
 {
    System_Info *info;
+   struct timespec ts;
    Enigmatic *enigmatic = data;
 
    enigmatic->info = info = calloc(1, sizeof(System_Info));
@@ -45,7 +52,11 @@ cb_system_log(void *data, Ecore_Thread *thread)
 
    while (!ecore_thread_check(thread))
      {
-        enigmatic->poll_time = time(NULL);
+        clock_gettime(CLOCK_REALTIME, &ts);
+        enigmatic->poll_time = ts.tv_sec;
+#if DEBUGTIME
+        int64_t tdiff = ts.tv_nsec + (ts.tv_sec * 1000000000);
+#endif
 
         if (enigmatic_log_rotate(enigmatic))
           enigmatic->broadcast = 1;
@@ -80,24 +91,16 @@ cb_system_log(void *data, Ecore_Thread *thread)
           enigmatic->broadcast = 1;
 
         enigmatic->poll_count++;
+#if DEBUGTIME
+        clock_gettime(CLOCK_REALTIME, &ts);
+        printf("%ld\n", ((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff);
+#endif
 
         usleep(1000000 / 10);
      }
 
    system_info_free(info);
    free(info);
-}
-
-static void
-cb_system_log_feedback(void *data, Ecore_Thread *thread, void *msg)
-{
-   Enigmatic *enigmatic;
-   System_Info *info;
-
-   enigmatic = data;
-   info = msg;
-
-   (void) enigmatic; (void) info;
 }
 
 static void
@@ -117,6 +120,10 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic->broadcast = 1;
 
    enigmatic_log_open(enigmatic);
+
+   monitor_batteries_init();
+   monitor_sensors_init();
+   monitor_power_init(enigmatic);
 }
 
 static void
@@ -131,6 +138,10 @@ enigmatic_shutdown(Enigmatic *enigmatic)
 
    enigmatic_log_unlock(enigmatic);
    enigmatic_pidfile_delete(enigmatic);
+
+   monitor_batteries_shutdown();
+   monitor_sensors_shutdown();
+   monitor_power_shutdown();
 }
 
 void
@@ -172,15 +183,10 @@ int main(int argc, char **argv)
 
         enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
 
-        monitor_batteries_init();
-        monitor_sensors_init();
-
-        enigmatic->thread = ecore_thread_feedback_run(cb_system_log,
-                                                      cb_system_log_feedback,
-                                                      NULL,
-                                                      NULL,
-                                                      enigmatic,
-                                                      0);
+        enigmatic->thread = ecore_thread_run(cb_system_log,
+                                             NULL,
+                                             NULL,
+                                             enigmatic);
         ecore_main_loop_begin();
 
         enigmatic_shutdown(enigmatic);

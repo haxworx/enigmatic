@@ -60,26 +60,29 @@ batteries_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 static void
 battery_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 {
+   Battery *bat;
    uint32_t it = 0;
    while (!ecore_thread_check(thread))
      {
         eina_lock_take(&batteries_lock);
         if ((it) && (!(it % 10)))
           {
-             Battery *bat;
              EINA_LIST_FREE(batteries, bat)
                free(bat);
              batteries = batteries_find();
           }
         batteries_update(batteries);
         eina_lock_release(&batteries_lock);
+
         for (int i = 0; i < 20; i++)
           {
-             if (ecore_thread_check(thread)) return;
+             if (ecore_thread_check(thread)) break;
              usleep(50000);
           }
         it++;
      }
+   EINA_LIST_FREE(batteries, bat)
+     free(bat);
 }
 
 void
@@ -94,11 +97,6 @@ monitor_batteries_init(void)
 void
 monitor_batteries_shutdown(void)
 {
-   Battery *bat;
-   ecore_thread_cancel(thread);
-   ecore_thread_wait(thread, 1.0);
-   EINA_LIST_FREE(batteries, bat)
-     free(bat);
    eina_lock_take(&batteries_lock);
    eina_lock_release(&batteries_lock);
    eina_lock_free(&batteries_lock);
@@ -128,7 +126,6 @@ monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
                   eina_hash_add(*cache_hash, b->name, b);
                }
           }
-
         enigmatic->battery_thread = thread = ecore_thread_run(battery_thread, NULL, NULL, NULL);
      }
 

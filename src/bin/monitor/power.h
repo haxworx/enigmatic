@@ -6,4 +6,10 @@
 Eina_Bool
 monitor_power(Enigmatic *enigmatic EINA_UNUSED, Eina_Bool *ac_prev);
 
+void
+monitor_power_init(Enigmatic *enigmatic);
+
+void
+monitor_power_shutdown(void);
+
 #endif

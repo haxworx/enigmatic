@@ -72,6 +72,7 @@ sensors_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 static void
 sensors_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 {
+   Sensor *sensor;
    uint32_t it = 0;
 
    while (!ecore_thread_check(thread))
@@ -79,20 +80,22 @@ sensors_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
         eina_lock_take(&sensors_lock);
         if ((it) && (!(it % 20)))
           {
-             Sensor *sensor;
              EINA_LIST_FREE(sensors, sensor)
                free(sensor);
              sensors = sensors_find();
           }
         sensors_update(sensors);
         eina_lock_release(&sensors_lock);
+
         for (int i = 0; i < 20; i++)
           {
-             if (ecore_thread_check(thread)) return;
+             if (ecore_thread_check(thread)) break;
              usleep(50000);
           }
         it++;
      }
+   EINA_LIST_FREE(sensors, sensor)
+     free(sensor);
 }
 
 void
@@ -107,12 +110,6 @@ monitor_sensors_init(void)
 void
 monitor_sensors_shutdown(void)
 {
-   Sensor *sensor;
-
-   ecore_thread_cancel(thread);
-   ecore_thread_wait(thread, 1.0);
-   EINA_LIST_FREE(sensors, sensor)
-     free(sensor);
    eina_lock_take(&sensors_lock);
    eina_lock_release(&sensors_lock);
    eina_lock_free(&sensors_lock);
