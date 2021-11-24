@@ -62,7 +62,7 @@ cb_event_change_init(Enigmatic_Client *client, Snapshot *s, void *data)
         else col++;
 
         rec = evas_object_rectangle_add(evas_object_evas_get(tb));
-        evas_object_size_hint_min_set(rec, ELM_SCALE_SIZE(65), ELM_SCALE_SIZE(65));
+        evas_object_size_hint_min_set(rec, 86, 86);
         elm_table_pack(tb, rec, col, row, 1, 1);
         evas_object_show(rec);
 
@@ -72,7 +72,7 @@ cb_event_change_init(Enigmatic_Client *client, Snapshot *s, void *data)
         evas_object_data_set(lb, "r1", rec);
 
         rec = evas_object_rectangle_add(evas_object_evas_get(tb));
-        evas_object_size_hint_min_set(rec, ELM_SCALE_SIZE(64), ELM_SCALE_SIZE(64));
+        evas_object_size_hint_min_set(rec, 84, 84);
         elm_table_pack(tb, rec, col, row, 1, 1);
         evas_object_show(rec);
         evas_object_data_set(lb, "r2", rec);
