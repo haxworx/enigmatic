@@ -1416,9 +1416,17 @@ cb_thread_fallback(void *data, Ecore_Thread *thread)
    Enigmatic_Client *client = data;
    while (!ecore_thread_check(thread))
      {
-        cb_file_modified(client, 0, NULL);
+        ecore_thread_feedback(thread, client);
         usleep(10000);
      }
+}
+
+static void
+cb_thread_fallback_feedback(void *data, Ecore_Thread *thread EINA_UNUSED, void *msg)
+{
+   Enigmatic_Client *client = msg;
+
+   cb_file_modified(client, 0, NULL);
 }
 
 #endif
@@ -1504,7 +1512,7 @@ client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_
    client->handler =
       ecore_event_handler_add(EIO_MONITOR_FILE_MODIFIED, cb_file_modified, client);
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
-   client->thread = ecore_thread_run(cb_thread_fallback, NULL, NULL, client);
+   client->thread = ecore_thread_feedback_run(cb_thread_fallback, cb_thread_fallback_feedback, NULL, NULL, client, 0);
 #endif
 }
 

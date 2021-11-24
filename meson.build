@@ -57,7 +57,7 @@ endif
 
 cfg.set_quoted('PACKAGE', meson.project_name())
 cfg.set_quoted('PACKAGE_VERSION', meson.project_version())
-cfg.set_quoted('PACKAGE_DATA_DIR', join_paths(dir_data, 'thing'))
+cfg.set_quoted('PACKAGE_DATA_DIR', join_paths(dir_data, meson.project_name()))
 
 config_dir = include_directories('.')
 
