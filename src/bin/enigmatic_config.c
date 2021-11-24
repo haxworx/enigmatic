@@ -76,23 +76,17 @@ enigmatic_config_load(void)
           {
              f = eet_open(path, EET_FILE_MODE_READ);
              if (!f)
-               {
-                  fprintf(stderr, "eet_open: (%s)\n", path);
-                  exit(1);
-               }
+               ERROR("eet_open: (%s)", path);
+
              config = eet_data_read(f, _enigmatic_conf_desc, CONFIG_KEY);
              if (!config)
-               {
-                  fprintf(stderr, "eet_data_read: corrupt config?\n");
-                  exit(1);
-               }
+               ERROR("eet_data_read: corrupt config?");
+
              eet_close(f);
 
              if (config->version != ENIGMATIC_CONFIG_VERSION)
-               {
-                  fprintf(stderr, "config version mismatch.\n");
-                  exit(1);
-               }
+               ERROR("config version mismatch.");
+
           }
         free(path);
      }
@@ -111,10 +105,8 @@ enigmatic_config_save(Enigmatic_Config *config)
      {
         f = eet_open(path, EET_FILE_MODE_WRITE);
         if (!f)
-          {
-             fprintf(stderr, "eet_open: (%s)\n", path);
-             exit(1);
-          }
+          ERROR("eet_open: (%s)", path);
+
         eet_data_write(f, _enigmatic_conf_desc, CONFIG_KEY, config, EINA_TRUE);
         eet_close(f);
         free(path);
