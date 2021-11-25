@@ -3,6 +3,8 @@
 #include "monitor/monitor.h"
 #include "enigmatic_log.h"
 
+#define DEBUGTIME 1
+
 static void
 system_info_free(System_Info *info)
 {
@@ -40,9 +42,8 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
    return 0;
 }
 
-#define DEBUGTIME 1
 static void
-cb_system_log(void *data, Ecore_Thread *thread)
+enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 {
    System_Info *info;
    struct timespec ts;
@@ -100,7 +101,7 @@ cb_system_log(void *data, Ecore_Thread *thread)
 #if DEBUGTIME
         printf("usecs is %i\n", usecs);
         clock_gettime(CLOCK_REALTIME, &ts);
-        printf("want 100000 got %ld\n", (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff)/ 1000);
+        printf("want 100000 got %ld\n", (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff) / 1000);
 #endif
      }
 
@@ -196,7 +197,7 @@ int main(int argc, char **argv)
 
         enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
 
-        enigmatic->thread = ecore_thread_run(cb_system_log,
+        enigmatic->thread = ecore_thread_run(enigmatic_system_monitor,
                                              NULL,
                                              NULL,
                                              enigmatic);
