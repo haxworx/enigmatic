@@ -62,7 +62,7 @@ cb_system_log(void *data, Ecore_Thread *thread)
           enigmatic->broadcast = 1;
 
         if (enigmatic->broadcast)
-          LOG_HEADER(enigmatic, EVENT_BROADCAST);
+          ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BROADCAST);
 
         if (enigmatic->interval == INTERVAL_NORMAL)
           monitor_cores(enigmatic, &info->cores);
@@ -80,7 +80,7 @@ cb_system_log(void *data, Ecore_Thread *thread)
              monitor_file_systems(enigmatic, &info->file_systems);
              monitor_processes(enigmatic, &info->processes);
 
-             LOG_HEADER(enigmatic, EVENT_BLOCK_END);
+             ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BLOCK_END);
           }
 
         // flush to disk.

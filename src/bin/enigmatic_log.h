@@ -11,7 +11,7 @@
 # define PATH_MAX 4096
 #endif
 
-#define LOG_HEADER(s, e) enigmatic_log_header(s, e, (Message) { 0 });
+#define ENIGMATIC_LOG_HEADER(s, e) enigmatic_log_header(s, e, (Message) { 0 });
 
 Log *
 enigmatic_log_open(Enigmatic *enigmatic);

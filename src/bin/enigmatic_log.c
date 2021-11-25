@@ -276,7 +276,7 @@ enigmatic_log_close(Enigmatic *enigmatic)
 {
    Log *file = enigmatic->log.file;
 
-   LOG_HEADER(enigmatic, EVENT_LAST_RECORD);
+   ENIGMATIC_LOG_HEADER(enigmatic, EVENT_LAST_RECORD);
    enigmatic_log_crush(enigmatic);
 
    if (file->fd != -1)
@@ -346,7 +346,7 @@ enigmatic_log_compress(const char *path, Eina_Bool staggered)
    f = fopen(path2, "wb");
    if (f)
      {
-        if (fwrite(out, 1, newlength, f) == length)
+        if (fwrite(out, 1, newlength, f) == newlength)
           ret = 1;
         fclose(f);
      }
@@ -484,7 +484,7 @@ enigmatic_log_rotate(Enigmatic *enigmatic)
    if ((enigmatic->log.rotate_every_minute) && (enigmatic->log.hour == tm_now->tm_hour) && (enigmatic->log.min == tm_now->tm_min))
      return 0;
 
-   LOG_HEADER(enigmatic, EVENT_EOF);
+   ENIGMATIC_LOG_HEADER(enigmatic, EVENT_EOF);
    enigmatic_log_close(enigmatic);
 
    if (!enigmatic->log.save_history)
