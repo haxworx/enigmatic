@@ -80,6 +80,8 @@ cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
    Meminfo *memory;
    Win_Data *pd;
 
+   if (!client_event_is_snapshot(client)) return;
+
    pd = data;
    memory = &s->meminfo;
 
