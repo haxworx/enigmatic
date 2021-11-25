@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "system/file_systems.h"
 #include "enigmatic_log.h"
 
 static void
@@ -17,6 +18,8 @@ monitor_memory(Enigmatic *enigmatic, Meminfo *mem)
    Meminfo mem_now;
 
    memory_info(&mem_now);
+   if (file_system_in_use("ZFS"))
+     mem_now.used += mem_now.zfs_arc_used;
    if (enigmatic->broadcast)
      {
         memory_refresh(enigmatic, &mem_now);
