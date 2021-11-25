@@ -12,6 +12,12 @@ _pidfile_path(void)
    return strdup(path);
 }
 
+char *
+enigmatic_pidfile_path(void)
+{
+   return _pidfile_path();
+}
+
 Eina_Bool
 enigmatic_pidfile_create(Enigmatic *enigmatic)
 {

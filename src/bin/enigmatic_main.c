@@ -22,16 +22,16 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
    if (enigmatic->thread)
      {
         ecore_thread_cancel(enigmatic->thread);
-        ecore_thread_wait(enigmatic->thread, 1.0);
+        ecore_thread_wait(enigmatic->thread, 0.5);
      }
 
    ecore_thread_cancel(enigmatic->battery_thread);
    ecore_thread_cancel(enigmatic->sensors_thread);
    ecore_thread_cancel(enigmatic->power_thread);
 
-   ecore_thread_wait(enigmatic->battery_thread, 1.0);
-   ecore_thread_wait(enigmatic->sensors_thread, 1.0);
-   ecore_thread_wait(enigmatic->power_thread, 1.0);
+   ecore_thread_wait(enigmatic->battery_thread, 0.5);
+   ecore_thread_wait(enigmatic->sensors_thread, 0.5);
+   ecore_thread_wait(enigmatic->power_thread, 0.5);
 
    ecore_event_handler_del(enigmatic->handler);
 
@@ -147,14 +147,14 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    EINA_LIST_FREE(enigmatic->unique_ids, id)
      free(id);
 
-   enigmatic_log_unlock(enigmatic);
-   enigmatic_pidfile_delete(enigmatic);
-
    monitor_batteries_shutdown();
    monitor_sensors_shutdown();
    monitor_power_shutdown();
 
    enigmatic_config_shutdown();
+
+   enigmatic_pidfile_delete(enigmatic);
+   enigmatic_log_unlock(enigmatic);
 }
 
 void

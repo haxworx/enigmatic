@@ -6,6 +6,9 @@
 Eina_Bool
 enigmatic_pidfile_create(Enigmatic *enigmatic);
 
+char *
+enigmatic_pidfile_path(void);
+
 const char *
 enigmatic_cache_dir_get(void);
 
