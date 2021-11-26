@@ -471,7 +471,6 @@ enigmatic_log_rotate(Enigmatic *enigmatic)
    char *path = NULL;
    char saved[PATH_MAX];
    time_t t = time(NULL);
-   Eina_Thread tid;
    Eina_Bool ok;
 
    if (enigmatic->log.hour == -1)
