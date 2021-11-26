@@ -89,6 +89,8 @@ struct _Enigmatic
       Eina_Bool         save_history;
       Eina_Bool         rotate_every_hour;
       Eina_Bool         rotate_every_minute;
+
+      Eina_Thread      *rotate_thread;
    } log;
 
    Ecore_Thread        *battery_thread;

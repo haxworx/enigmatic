@@ -3,7 +3,7 @@
 #include "monitor/monitor.h"
 #include "enigmatic_log.h"
 
-#define DEBUGTIME 1
+#define DEBUGTIME 0
 
 static void
 system_info_free(System_Info *info)
@@ -119,6 +119,7 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic_pidfile_create(enigmatic);
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
+   enigmatic->log.rotate_every_minute = 0;
    enigmatic->log.rotate_every_hour = 1;
    enigmatic->log.save_history = 1;
    enigmatic->interval = INTERVAL_NORMAL;

@@ -292,7 +292,7 @@ enigmatic_log_close(Enigmatic *enigmatic)
    file = NULL;
 }
 
-#define BLOCK_SIZE 8192
+#define BLOCK_SIZE 16384
 
 Eina_Bool
 enigmatic_log_compress(const char *path, Eina_Bool staggered)
@@ -338,7 +338,7 @@ enigmatic_log_compress(const char *path, Eina_Bool staggered)
         int sz = LZ4_compress_default((char *) map + off, out + newlength, size, length);
         fprintf(f, "%i-%i,", size, sz);
         newlength += sz;
-        if (staggered) usleep(75000);
+        if (staggered) usleep(50000);
      }
    fclose(f);
 
@@ -346,7 +346,8 @@ enigmatic_log_compress(const char *path, Eina_Bool staggered)
    f = fopen(path2, "wb");
    if (f)
      {
-        if (fwrite(out, 1, newlength, f) == newlength)
+        int n = fwrite(out, 1, newlength, f);
+        if (n == newlength)
           ret = 1;
         fclose(f);
      }
@@ -503,9 +504,18 @@ enigmatic_log_rotate(Enigmatic *enigmatic)
    ecore_file_cp(path, saved);
    free(path);
 
+   // Join our previous background thread (if existing).
+   if (enigmatic->log.rotate_thread)
+     {
+        eina_thread_join(*enigmatic->log.rotate_thread);
+        free(enigmatic->log.rotate_thread);
+     }
+   enigmatic->log.rotate_thread = calloc(1, sizeof(Eina_Thread));
+   EINA_SAFETY_ON_NULL_RETURN_VAL(enigmatic->log.rotate_thread, 0);
+
    enigmatic_log_open(enigmatic);
 
-   ok = eina_thread_create(&tid, EINA_THREAD_BACKGROUND, -1, cb_enigmatic_log_compress, strdup(saved));
+   ok = eina_thread_create(enigmatic->log.rotate_thread, EINA_THREAD_BACKGROUND, -1, cb_enigmatic_log_compress, strdup(saved));
    if (!ok)
      ERROR("eina_thread_create: cb_enigmatic_log_compress");
 
