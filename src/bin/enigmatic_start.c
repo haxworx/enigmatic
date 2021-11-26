@@ -8,6 +8,17 @@
 #include <signal.h>
 #include "enigmatic_util.h"
 
+// Having clients launch the daemon on-demand isn't really ideal.
+// For the sake of testing's sake, launch and then see if we have
+// a pidfile after a second.
+//
+// Spinning up enigmatic daemon and then shutting it down, takes
+// some time (not much but some). It should really "stick" around.
+//
+// There's also a race between a shutdown (enigmatic -s) and a
+// subsequent launch where the daemon could be shutting down and
+// this little helper thinks it has successfully launched.
+
 static void
 launch(void)
 {
@@ -43,7 +54,7 @@ int
 main(int argc, char **argv)
 {
    pid_t pid;
-   int ret = 1;
+   int running = 0;
 
    signal(SIGCHLD, SIG_IGN);
 
@@ -63,18 +74,17 @@ main(int argc, char **argv)
    else
      {
         struct stat st;
-        char *path = enigmatic_log_path();
-        // We have a log?
+        char *path = enigmatic_pidfile_path();
         for (int i = 0; i < 20; i++)
           {
              if (stat(path, &st) != -1)
-               {
-                  ret = 0;
-                  break;
-               }
+               running = 1;
+             else running = 0;
+
              usleep(1000000 / 20);
           }
         free(path);
      }
-   return ret;
+
+   return !running;
 }
