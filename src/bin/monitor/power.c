@@ -19,8 +19,6 @@ power_refresh(Enigmatic *enigmatic, Eina_Bool *ac)
 static void
 power_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 {
-   uint32_t it = 0;
-
    while (!ecore_thread_check(thread))
      {
         eina_lock_take(&power_lock);
@@ -32,7 +30,6 @@ power_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
              if (ecore_thread_check(thread)) break;
              usleep(50000);
           }
-        it++;
      }
 }
 
