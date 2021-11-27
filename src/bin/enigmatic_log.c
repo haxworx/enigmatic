@@ -453,7 +453,7 @@ enigmatic_log_decompress(const char *path, uint32_t *length)
 }
 
 static void *
-cb_enigmatic_log_compress(void *data, Eina_Thread tid EINA_UNUSED)
+log_compress(void *data, Eina_Thread tid EINA_UNUSED)
 {
    char *path = data;
 
@@ -514,9 +514,9 @@ enigmatic_log_rotate(Enigmatic *enigmatic)
 
    enigmatic_log_open(enigmatic);
 
-   ok = eina_thread_create(enigmatic->log.rotate_thread, EINA_THREAD_BACKGROUND, -1, cb_enigmatic_log_compress, strdup(saved));
+   ok = eina_thread_create(enigmatic->log.rotate_thread, EINA_THREAD_BACKGROUND, -1, log_compress, strdup(saved));
    if (!ok)
-     ERROR("eina_thread_create: cb_enigmatic_log_compress");
+     ERROR("eina_thread_create: log_compress");
 
    return 1;
 }
