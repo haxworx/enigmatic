@@ -453,7 +453,7 @@ enigmatic_log_decompress(const char *path, uint32_t *length)
 }
 
 static void *
-log_compress(void *data, Eina_Thread tid EINA_UNUSED)
+log_background_compress(void *data, Eina_Thread tid EINA_UNUSED)
 {
    char *path = data;
 
@@ -467,36 +467,38 @@ log_compress(void *data, Eina_Thread tid EINA_UNUSED)
 Eina_Bool
 enigmatic_log_rotate(Enigmatic *enigmatic)
 {
+   Enigmatic_Config *config;
    struct tm *tm_now;
-   char *path = NULL;
+   char *path;
    char saved[PATH_MAX];
-   time_t t = time(NULL);
    Eina_Bool ok;
+   time_t t = time(NULL);
+
+   config = enigmatic->config;
 
    if (enigmatic->log.hour == -1)
      return 0;
 
    tm_now = localtime(&t);
 
-   if ((enigmatic->log.rotate_every_hour) && (enigmatic->log.hour == tm_now->tm_hour))
+   if ((config->log.rotate_every_hour) && (enigmatic->log.hour == tm_now->tm_hour))
      return 0;
 
-   if ((enigmatic->log.rotate_every_minute) && (enigmatic->log.hour == tm_now->tm_hour) && (enigmatic->log.min == tm_now->tm_min))
+   if ((config->log.rotate_every_minute) && (enigmatic->log.hour == tm_now->tm_hour) && (enigmatic->log.min == tm_now->tm_min))
      return 0;
 
    ENIGMATIC_LOG_HEADER(enigmatic, EVENT_EOF);
    enigmatic_log_close(enigmatic);
 
-   if (!enigmatic->log.save_history)
+   if (!config->log.save_history)
      {
         enigmatic_log_open(enigmatic);
         return 1;
      }
 
-   if (enigmatic->log.rotate_every_hour)
+   if (config->log.rotate_every_hour)
      snprintf(saved, sizeof(saved), "%s/%s/%02i", enigmatic_cache_dir_get(), PACKAGE, enigmatic->log.hour);
-
-   if (enigmatic->log.rotate_every_minute)
+   else if (config->log.rotate_every_minute)
      snprintf(saved, sizeof(saved), "%s/%s/%02i-%02i", enigmatic_cache_dir_get(), PACKAGE, enigmatic->log.hour, enigmatic->log.min);
 
    path = enigmatic_log_path();
@@ -514,9 +516,9 @@ enigmatic_log_rotate(Enigmatic *enigmatic)
 
    enigmatic_log_open(enigmatic);
 
-   ok = eina_thread_create(enigmatic->log.rotate_thread, EINA_THREAD_BACKGROUND, -1, log_compress, strdup(saved));
+   ok = eina_thread_create(enigmatic->log.rotate_thread, EINA_THREAD_BACKGROUND, -1, log_background_compress, strdup(saved));
    if (!ok)
-     ERROR("eina_thread_create: log_compress");
+     ERROR("eina_thread_create: log_background_compress");
 
    return 1;
 }

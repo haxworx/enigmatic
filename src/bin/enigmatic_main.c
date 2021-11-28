@@ -115,13 +115,10 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic_log_lock(enigmatic);
 
    enigmatic->pid = getpid();
-   // LOCK before...ok FIX pidfile create
    enigmatic_pidfile_create(enigmatic);
+
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
-   enigmatic->log.rotate_every_minute = 0;
-   enigmatic->log.rotate_every_hour = 1;
-   enigmatic->log.save_history = 1;
    enigmatic->interval = INTERVAL_NORMAL;
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;

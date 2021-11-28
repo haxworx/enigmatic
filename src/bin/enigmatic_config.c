@@ -53,6 +53,9 @@ _config_defaults(void)
   EINA_SAFETY_ON_NULL_RETURN_VAL(config, NULL);
 
   config->version = ENIGMATIC_CONFIG_VERSION;
+  config->log.save_history = 1;
+  config->log.rotate_every_minute = 0;
+  config->log.rotate_every_hour = 1;
 
   return config;
 }
@@ -62,6 +65,7 @@ enigmatic_config_load(void)
 {
    Eet_File *f;
    char *path;
+   int maj, min;
    Enigmatic_Config *config = NULL;
 
    path = enigmatic_config_file_path();
@@ -84,9 +88,17 @@ enigmatic_config_load(void)
 
              eet_close(f);
 
-             if (config->version != ENIGMATIC_CONFIG_VERSION)
+             maj = config->version >> 16 & 0xffff;
+             min = config->version & 0xffff;
+             if ((maj) && (maj != ENIGMATIC_CONFIG_VERSION_MAJOR))
                ERROR("config version mismatch.");
 
+             if (min != ENIGMATIC_CONFIG_VERSION_MINOR)
+               {
+                  fprintf(stderr, "reinitialising configuration\n");
+                  free(config);
+                  config = _config_defaults();
+               }
           }
         free(path);
      }
@@ -107,7 +119,9 @@ enigmatic_config_save(Enigmatic_Config *config)
         if (!f)
           ERROR("eet_open: (%s)", path);
 
-        eet_data_write(f, _enigmatic_conf_desc, CONFIG_KEY, config, EINA_TRUE);
+        int n = eet_data_write(f, _enigmatic_conf_desc, CONFIG_KEY, config, EINA_TRUE);
+        if (!n)
+          ERROR("eet_data_write()");
         eet_close(f);
         free(path);
         return 1;

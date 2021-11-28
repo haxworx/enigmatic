@@ -86,10 +86,6 @@ struct _Enigmatic
       Log              *file;
       char              hour;
       char              min;
-      Eina_Bool         save_history;
-      Eina_Bool         rotate_every_hour;
-      Eina_Bool         rotate_every_minute;
-
       Eina_Thread      *rotate_thread;
    } log;
 
