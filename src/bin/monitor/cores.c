@@ -144,8 +144,8 @@ monitor_cores(Enigmatic *enigmatic, Eina_Hash **cache_hash)
              changed = 1;
              continue;
           }
-        diff_total = core->total - c->total;
-        diff_idle = core->idle - c->idle;
+        diff_total = (core->total - c->total) / enigmatic->interval;
+        diff_idle = (core->idle - c->idle) / enigmatic->interval;
         ratio = diff_total / 100.0;
         used = diff_total - diff_idle;
         percent = used / ratio;

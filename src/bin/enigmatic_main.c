@@ -47,6 +47,7 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 {
    System_Info *info;
    struct timespec ts;
+   Eina_Bool power_changed;
    Enigmatic *enigmatic = data;
 
    enigmatic->info = info = calloc(1, sizeof(System_Info));
@@ -68,14 +69,14 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
         if (enigmatic->interval == INTERVAL_NORMAL)
           monitor_cores(enigmatic, &info->cores);
 
-        if ((enigmatic->broadcast) || (!(enigmatic->poll_count % (enigmatic->interval * 10))))
+        if ((enigmatic->broadcast) || (!(enigmatic->poll_count % 10)))
           {
              if (enigmatic->interval != INTERVAL_NORMAL)
                monitor_cores(enigmatic, &info->cores);
 
              monitor_memory(enigmatic, &info->meminfo);
              monitor_sensors(enigmatic, &info->sensors);
-             monitor_power(enigmatic, &info->power);
+             power_changed = monitor_power(enigmatic, &info->power);
              monitor_batteries(enigmatic, &info->batteries);
              monitor_network_interfaces(enigmatic, &info->network_interfaces);
              monitor_file_systems(enigmatic, &info->file_systems);
@@ -84,11 +85,18 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
              ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BLOCK_END);
           }
 
+        if (power_changed)
+          {
+             if (info->power) enigmatic->interval = INTERVAL_NORMAL;
+             else enigmatic->interval = INTERVAL_MEDIUM;
+             power_changed = 0;
+          }
+
         // flush to disk.
         enigmatic_log_crush(enigmatic);
 
         enigmatic->broadcast = 0;
-        if ((enigmatic->poll_count) && (!(enigmatic->poll_count % enigmatic->device_refresh_interval)))
+        if ((enigmatic->poll_count) && (!(enigmatic->poll_count % (enigmatic->device_refresh_interval / enigmatic->interval))))
           enigmatic->broadcast = 1;
 
         enigmatic->poll_count++;
@@ -97,7 +105,7 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
         int usecs = (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff) / 1000;
         if (usecs > 100000) usecs = 100000;
 
-        usleep((1000000 / 10) - usecs);
+        usleep(((enigmatic->interval * 1000000) / 10) - usecs);
 #if DEBUGTIME
         printf("usecs is %i\n", usecs);
         clock_gettime(CLOCK_REALTIME, &ts);
@@ -119,7 +127,8 @@ enigmatic_init(Enigmatic *enigmatic)
 
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
-   enigmatic->interval = INTERVAL_NORMAL;
+   enigmatic->interval = power_ac_present() ? INTERVAL_NORMAL : INTERVAL_MEDIUM;
+
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
 

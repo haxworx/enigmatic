@@ -52,7 +52,7 @@ monitor_power_shutdown(void)
 Eina_Bool
 monitor_power(Enigmatic *enigmatic, Eina_Bool *ac_prev)
 {
-   Eina_Bool ac, ret = 0;
+   Eina_Bool ac, changed = 0;
 
    if (eina_lock_take_try(&power_lock) != EINA_LOCK_SUCCEED) return 0;
 
@@ -61,9 +61,10 @@ monitor_power(Enigmatic *enigmatic, Eina_Bool *ac_prev)
    if (enigmatic->broadcast)
      {
         power_refresh(enigmatic, &ac);
+        if (*ac_prev != ac) changed = 1;
         *ac_prev = ac;
         eina_lock_release(&power_lock);
-        return 1;
+        return changed;
      }
    if (ac != *ac_prev)
      {
@@ -76,9 +77,9 @@ monitor_power(Enigmatic *enigmatic, Eina_Bool *ac_prev)
         enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
         enigmatic_log_write(enigmatic, (char *) &ac, 1);
         *ac_prev = ac;
-        ret = 1;
+        changed = 1;
      }
    eina_lock_release(&power_lock);
-   return ret;
+   return changed;
 }
 
