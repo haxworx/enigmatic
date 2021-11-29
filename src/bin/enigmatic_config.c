@@ -38,6 +38,9 @@ enigmatic_config_init(void)
    _enigmatic_conf_desc = eet_data_descriptor_stream_new(&eddc);
 
    EET_DATA_DESCRIPTOR_ADD_BASIC(_enigmatic_conf_desc, Enigmatic_Config, "version", version, EET_T_INT);
+   EET_DATA_DESCRIPTOR_ADD_BASIC(_enigmatic_conf_desc, Enigmatic_Config, "log.save_history", log.save_history, EET_T_UCHAR);
+   EET_DATA_DESCRIPTOR_ADD_BASIC(_enigmatic_conf_desc, Enigmatic_Config, "log.rotate_every_hour", log.rotate_every_hour, EET_T_UCHAR);
+   EET_DATA_DESCRIPTOR_ADD_BASIC(_enigmatic_conf_desc, Enigmatic_Config, "log.rotate_every_minute", log.rotate_every_minute, EET_T_UCHAR);
 }
 
 void
