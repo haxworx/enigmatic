@@ -3,7 +3,7 @@
 #include "monitor/monitor.h"
 #include "enigmatic_log.h"
 
-#define DEBUGTIME 0
+#define DEBUGTIME 1
 
 static void
 system_info_free(System_Info *info)
@@ -109,7 +109,7 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 #if DEBUGTIME
         printf("usecs is %i\n", usecs);
         clock_gettime(CLOCK_REALTIME, &ts);
-        printf("want 100000 got %ld\n", (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff) / 1000);
+        printf("want %i00000 got %ld\n", enigmatic->interval, (((ts.tv_sec * 1000000000) + ts.tv_nsec) - tdiff) / 1000);
 #endif
      }
 
@@ -127,7 +127,7 @@ enigmatic_init(Enigmatic *enigmatic)
 
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
-   enigmatic->interval = power_ac_present() ? INTERVAL_NORMAL : INTERVAL_MEDIUM;
+   enigmatic->interval = INTERVAL_NORMAL;
 
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
