@@ -7,7 +7,7 @@
 
 static int lock_fd = -1;
 
-#define DEBUGTIME 1
+#define DEBUGTIME 0
 
 static void
 system_info_free(System_Info *info)
