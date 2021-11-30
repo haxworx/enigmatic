@@ -2,8 +2,6 @@
 #include "Enigmatic.h"
 #include "enigmatic_query.h"
 
-Enigmatic_Query *query = NULL;
-
 void
 enigmatic_query_init(void)
 {
@@ -89,6 +87,7 @@ _enigmatic_query_connect_cb(void *data, int type, void *event)
 Eina_Bool
 enigmatic_query_send(const char *command)
 {
+   Enigmatic_Query *query;
    Ecore_Event_Handler *handlers[4];
    Eina_Bool ok = 0;
    int n = 0;
