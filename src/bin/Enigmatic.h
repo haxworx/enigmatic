@@ -71,11 +71,14 @@ struct _Enigmatic
    uint32_t             poll_time;
    uint32_t             poll_count;
    Interval             interval;
+   Interval             interval_update;
    Eina_Bool            broadcast;
    Eina_Bool            close_on_parent_exit;
    int                  device_refresh_interval;
 
    Enigmatic_Config    *config;
+
+   Eina_Lock            update_lock;
 
    pid_t                pid;
    char                *pidfile_path;

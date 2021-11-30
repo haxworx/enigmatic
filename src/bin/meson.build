@@ -26,13 +26,17 @@ src += files([
    'Enigmatic.h',
    'enigmatic_config.c',
    'enigmatic_config.h',
+   'enigmatic_server.c',
+   'enigmatic_server.h',
+   'enigmatic_query.c',
+   'enigmatic_query.h',
    'enigmatic_main.c',
    'uid.c',
 ])
 
 executable('enigmatic', src,
    include_directories  : [ config_dir, inc, inc_lz4 ],
-   dependencies         : [ dep_eina, dep_eet, dep_ecore, dep_ecore_file, deps_os ],
+   dependencies         : [ dep_eina, dep_eet, dep_ecore, dep_ecore_file, dep_ecore_con, deps_os ],
    link_with            : lz4_lib,
    gui_app              : false,
    install              : true)

@@ -1,6 +1,8 @@
 #include "Enigmatic.h"
 #include "enigmatic_config.h"
 #include "monitor/monitor.h"
+#include "enigmatic_server.h"
+#include "enigmatic_query.h"
 #include "enigmatic_log.h"
 
 static int lock_fd = -1;
@@ -78,20 +80,18 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 
              monitor_memory(enigmatic, &info->meminfo);
              monitor_sensors(enigmatic, &info->sensors);
-             power_changed = monitor_power(enigmatic, &info->power);
+             monitor_power(enigmatic, &info->power);
              monitor_batteries(enigmatic, &info->batteries);
              monitor_network_interfaces(enigmatic, &info->network_interfaces);
              monitor_file_systems(enigmatic, &info->file_systems);
              monitor_processes(enigmatic, &info->processes);
 
              ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BLOCK_END);
-          }
 
-        if (power_changed)
-          {
-             if (info->power) enigmatic->interval = INTERVAL_NORMAL;
-             else enigmatic->interval = INTERVAL_MEDIUM;
-             power_changed = 0;
+             eina_lock_take(&enigmatic->update_lock);
+             if (enigmatic->interval != enigmatic->interval_update)
+               enigmatic->interval = enigmatic->interval_update;
+             eina_lock_release(&enigmatic->update_lock);
           }
 
         // flush to disk.
@@ -127,7 +127,7 @@ enigmatic_init(Enigmatic *enigmatic)
 
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
-   enigmatic->interval = INTERVAL_NORMAL;
+   enigmatic->interval = enigmatic->interval_update = INTERVAL_NORMAL;
 
    enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
@@ -135,6 +135,10 @@ enigmatic_init(Enigmatic *enigmatic)
    enigmatic_config_init();
 
    enigmatic->config = enigmatic_config_load();
+
+   eina_lock_new(&enigmatic->update_lock);
+
+   enigmatic_server_init(enigmatic);
 
    enigmatic_log_open(enigmatic);
 
@@ -159,9 +163,13 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    monitor_sensors_shutdown();
    monitor_power_shutdown();
 
+   enigmatic_server_shutdown(enigmatic);
+
    enigmatic_config_shutdown();
 
    enigmatic_pidfile_delete(enigmatic);
+
+   eina_lock_free(&enigmatic->update_lock);
 }
 
 void
@@ -176,6 +184,10 @@ usage(void)
    printf("%s [OPTIONS]\n"
           "Where OPTIONS can one of: \n"
           "   -s                 Stop enigmatic daemon.\n"
+          "   -p                 Ping enigmatic daemon.\n"
+          "   --interval-normal  Set enigmatic daemon interval normal.\n"
+          "   --interval-medium  Set enigmatic daemon interval medium.\n"
+          "   --interval-slow    Set enigmatic daemon interval slow.\n"
           "   -h | --help        This menu.\n",
           PACKAGE);
    exit(0);
@@ -187,6 +199,14 @@ int main(int argc, char **argv)
      {
         if ((!strcasecmp(argv[i], "-h")) || (!strcasecmp(argv[i], "--help")))
           usage();
+        else if (!strcmp(argv[i], "-p"))
+          exit(enigmatic_query_send("PING"));
+        else if (!strcmp(argv[i], "--interval-normal"))
+          exit(enigmatic_query_send("interval-normal"));
+        else if (!strcmp(argv[i], "--interval-medium"))
+          exit(enigmatic_query_send("interval-medium"));
+        else if (!strcmp(argv[i], "--interval-slow"))
+          exit(enigmatic_query_send("interval-slow"));
         else if (!strcmp(argv[i], "-s"))
           {
              enigmatic_terminate();

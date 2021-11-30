@@ -1,6 +1,6 @@
 ##### Project
 project('enigmatic', 'c',
-        version       : '0.1.1',
+        version       : '0.1.2',
         meson_version : '>= 0.40.0')
 
 efl_version = '>= 1.22.0'
@@ -15,6 +15,7 @@ dep_eina = dependency('eina', version: efl_version)
 dep_eet = dependency('eet', version: efl_version)
 dep_ecore = dependency('ecore', version: efl_version)
 dep_ecore_file = dependency('ecore-file', version: efl_version)
+dep_ecore_con = dependency('ecore-con', version: efl_version)
 dep_efreet = dependency('efreet', version: efl_version)
 dep_eio = dependency('eio', version: efl_version)
 dep_elm = dependency('elementary', version: efl_version)
