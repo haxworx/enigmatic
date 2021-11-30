@@ -62,16 +62,17 @@ lockfile_path(void)
    return strdup(path);
 }
 
-void
-enigmatic_log_lock(Enigmatic *enigmatic)
+int
+enigmatic_log_lock(void)
 {
+   int lock_fd;
    char *path = lockfile_path();
 
-   enigmatic->lock_fd = open(path, O_CREAT | O_RDONLY, 0666);
-   if (enigmatic->lock_fd == -1)
+   lock_fd = open(path, O_CREAT | O_RDONLY, 0666);
+   if (lock_fd == -1)
      ERROR("open %s (%s)\n", path, strerror(errno));
 
-   if (flock(enigmatic->lock_fd, LOCK_EX | LOCK_NB) == -1)
+   if (flock(lock_fd, LOCK_EX | LOCK_NB) == -1)
      {
         if (errno != EWOULDBLOCK)
           {
@@ -84,16 +85,18 @@ enigmatic_log_lock(Enigmatic *enigmatic)
           }
      }
    free(path);
+
+   return lock_fd;
 }
 
 void
-enigmatic_log_unlock(Enigmatic *enigmatic)
+enigmatic_log_unlock(int lock_fd)
 {
    char *path = lockfile_path();
 
-   flock(enigmatic->lock_fd, LOCK_UN);
+   flock(lock_fd, LOCK_UN);
    unlink(path);
-   close(enigmatic->lock_fd);
+   close(lock_fd);
    free(path);
 }
 

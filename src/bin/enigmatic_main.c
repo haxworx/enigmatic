@@ -3,6 +3,8 @@
 #include "monitor/monitor.h"
 #include "enigmatic_log.h"
 
+static int lock_fd = -1;
+
 #define DEBUGTIME 1
 
 static void
@@ -120,8 +122,6 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 static void
 enigmatic_init(Enigmatic *enigmatic)
 {
-   enigmatic_log_lock(enigmatic);
-
    enigmatic->pid = getpid();
    enigmatic_pidfile_create(enigmatic);
 
@@ -162,7 +162,12 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    enigmatic_config_shutdown();
 
    enigmatic_pidfile_delete(enigmatic);
-   enigmatic_log_unlock(enigmatic);
+}
+
+void
+cb_exit(void)
+{
+   enigmatic_log_unlock(lock_fd);
 }
 
 void
@@ -178,42 +183,39 @@ usage(void)
 
 int main(int argc, char **argv)
 {
-   Eina_Bool shutdown = EINA_FALSE;
-
    for (int i = 1; i < argc; i++)
      {
         if ((!strcasecmp(argv[i], "-h")) || (!strcasecmp(argv[i], "--help")))
           usage();
         else if (!strcmp(argv[i], "-s"))
           {
-             shutdown = EINA_TRUE;
-             break;
+             enigmatic_terminate();
+             exit(0);
           }
      }
 
+   lock_fd = enigmatic_log_lock();
+   atexit(cb_exit);
+
    ecore_init();
 
-   if (shutdown)
-     enigmatic_terminate();
-   else
-     {
-        Enigmatic *enigmatic = calloc(1, sizeof(Enigmatic));
-        EINA_SAFETY_ON_NULL_RETURN_VAL(enigmatic, 1);
+   Enigmatic *enigmatic = calloc(1, sizeof(Enigmatic));
+   EINA_SAFETY_ON_NULL_RETURN_VAL(enigmatic, 1);
+   enigmatic->lock_fd = lock_fd;
 
-        enigmatic_init(enigmatic);
+   enigmatic_init(enigmatic);
 
-        enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
+   enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
 
-        enigmatic->thread = ecore_thread_run(enigmatic_system_monitor,
-                                             NULL,
-                                             NULL,
-                                             enigmatic);
-        ecore_main_loop_begin();
+   enigmatic->thread = ecore_thread_run(enigmatic_system_monitor,
+                                        NULL,
+                                        NULL,
+                                        enigmatic);
+   ecore_main_loop_begin();
 
-        enigmatic_shutdown(enigmatic);
+   enigmatic_shutdown(enigmatic);
 
-        free(enigmatic);
-     }
+   free(enigmatic);
 
    ecore_shutdown();
 

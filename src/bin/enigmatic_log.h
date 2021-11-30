@@ -43,11 +43,11 @@ enigmatic_log_crush(Enigmatic *enigmatic);
 Eina_Bool
 enigmatic_log_rotate(Enigmatic *enigmatic);
 
-void
-enigmatic_log_lock(Enigmatic *enigmatic);
+int
+enigmatic_log_lock(void);
 
 void
-enigmatic_log_unlock(Enigmatic *enigmatic);
+enigmatic_log_unlock(int lock_fd);
 
 Eina_Bool
 enigmatic_log_compress(const char *path, Eina_Bool staggered);
