@@ -112,10 +112,7 @@ enigmatic_launch(void)
 Eina_Bool
 enigmatic_running(void)
 {
-   puts("FIXME");
-   exit(1);
-
-   return 0;
+   return system("enigmatic -p");
 }
 
 char *

@@ -51,7 +51,6 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 {
    System_Info *info;
    struct timespec ts;
-   Eina_Bool power_changed;
    Enigmatic *enigmatic = data;
 
    enigmatic->info = info = calloc(1, sizeof(System_Info));

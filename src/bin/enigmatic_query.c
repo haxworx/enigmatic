@@ -99,7 +99,7 @@ enigmatic_query_send(const char *command)
    EINA_SAFETY_ON_NULL_RETURN_VAL(query, 0);
 
    query->srv = ecore_con_server_connect(ECORE_CON_LOCAL_USER, PACKAGE, 0, NULL);
-   EINA_SAFETY_ON_NULL_RETURN_VAL(query->srv, 0);
+   if (!query->srv) return 0;
 
    query->command = command;
 
