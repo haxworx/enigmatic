@@ -1,5 +1,5 @@
-#ifndef MONITOR_H
-#define MONITOR_H
+#ifndef ENIGMATIC_MONITOR_H
+#define ENIGMATIC_MONITOR_H
 
 #include "Enigmatic.h"
 #include "cores.h"

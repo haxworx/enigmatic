@@ -86,7 +86,7 @@ battery_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 }
 
 void
-monitor_batteries_init(void)
+enigmatic_monitor_batteries_init(void)
 {
    eina_lock_new(&batteries_lock);
 
@@ -95,7 +95,7 @@ monitor_batteries_init(void)
 }
 
 void
-monitor_batteries_shutdown(void)
+enigmatic_monitor_batteries_shutdown(void)
 {
    eina_lock_take(&batteries_lock);
    eina_lock_release(&batteries_lock);
@@ -103,7 +103,7 @@ monitor_batteries_shutdown(void)
 }
 
 Eina_Bool
-monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l;
    Battery *bat, *b;

@@ -54,7 +54,7 @@ network_interfaces_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 }
 
 Eina_Bool
-monitor_network_interfaces(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_network_interfaces(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l, *network_interfaces;
    Network_Interface *iface, *iface2;

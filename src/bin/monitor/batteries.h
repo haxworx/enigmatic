@@ -1,15 +1,15 @@
-#ifndef MONITOR_BATTERIES_H
-#define MONITOR_BATTERIES_H
+#ifndef ENIGMATIC_MONITOR_BATTERIES_H
+#define ENIGMATIC_MONITOR_BATTERIES_H
 
 #include "Enigmatic.h"
 
 Eina_Bool
-monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash);
+enigmatic_monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash);
 
 void
-monitor_batteries_init(void);
+enigmatic_monitor_batteries_init(void);
 
 void
-monitor_batteries_shutdown(void);
+enigmatic_monitor_batteries_shutdown(void);
 
 #endif

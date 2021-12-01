@@ -99,7 +99,7 @@ sensors_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 }
 
 void
-monitor_sensors_init(void)
+enigmatic_monitor_sensors_init(void)
 {
    eina_lock_new(&sensors_lock);
 
@@ -108,7 +108,7 @@ monitor_sensors_init(void)
 }
 
 void
-monitor_sensors_shutdown(void)
+enigmatic_monitor_sensors_shutdown(void)
 {
    eina_lock_take(&sensors_lock);
    eina_lock_release(&sensors_lock);
@@ -116,7 +116,7 @@ monitor_sensors_shutdown(void)
 }
 
 Eina_Bool
-monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l;
    Sensor *sensor, *s;

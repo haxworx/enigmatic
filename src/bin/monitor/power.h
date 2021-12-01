@@ -1,15 +1,15 @@
-#ifndef MONITOR_POWER_H
-#define MONITOR_POWER_H
+#ifndef ENIGMATIC_MONITOR_POWER_H
+#define ENIGMATIC_MONITOR_POWER_H
 
 #include "Enigmatic.h"
 
 Eina_Bool
-monitor_power(Enigmatic *enigmatic EINA_UNUSED, Eina_Bool *ac_prev);
+enigmatic_monitor_power(Enigmatic *enigmatic EINA_UNUSED, Eina_Bool *ac_prev);
 
 void
-monitor_power_init(Enigmatic *enigmatic);
+enigmatic_monitor_power_init(Enigmatic *enigmatic);
 
 void
-monitor_power_shutdown(void);
+enigmatic_monitor_power_shutdown(void);
 
 #endif

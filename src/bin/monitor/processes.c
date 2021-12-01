@@ -133,7 +133,7 @@ processes_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 }
 
 Eina_Bool
-monitor_processes(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_processes(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l, *processes;
    Proc_Info *proc, *p1;

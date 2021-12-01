@@ -53,7 +53,7 @@ cores_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 }
 
 Eina_Bool
-monitor_cores(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_cores(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l;
    Cpu_Core *c, *core;

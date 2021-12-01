@@ -34,7 +34,7 @@ power_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 }
 
 void
-monitor_power_init(Enigmatic *enigmatic)
+enigmatic_monitor_power_init(Enigmatic *enigmatic)
 {
    eina_lock_new(&power_lock);
    power_ac_state = power_ac_present();
@@ -42,7 +42,7 @@ monitor_power_init(Enigmatic *enigmatic)
 }
 
 void
-monitor_power_shutdown(void)
+enigmatic_monitor_power_shutdown(void)
 {
    eina_lock_take(&power_lock);
    eina_lock_release(&power_lock);
@@ -50,7 +50,7 @@ monitor_power_shutdown(void)
 }
 
 Eina_Bool
-monitor_power(Enigmatic *enigmatic, Eina_Bool *ac_prev)
+enigmatic_monitor_power(Enigmatic *enigmatic, Eina_Bool *ac_prev)
 {
    Eina_Bool ac, changed = 0;
 

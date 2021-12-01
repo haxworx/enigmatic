@@ -70,20 +70,20 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
           ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BROADCAST);
 
         if (enigmatic->interval == INTERVAL_NORMAL)
-          monitor_cores(enigmatic, &info->cores);
+          enigmatic_monitor_cores(enigmatic, &info->cores);
 
         if ((enigmatic->broadcast) || (!(enigmatic->poll_count % 10)))
           {
              if (enigmatic->interval != INTERVAL_NORMAL)
-               monitor_cores(enigmatic, &info->cores);
+               enigmatic_monitor_cores(enigmatic, &info->cores);
 
-             monitor_memory(enigmatic, &info->meminfo);
-             monitor_sensors(enigmatic, &info->sensors);
-             monitor_power(enigmatic, &info->power);
-             monitor_batteries(enigmatic, &info->batteries);
-             monitor_network_interfaces(enigmatic, &info->network_interfaces);
-             monitor_file_systems(enigmatic, &info->file_systems);
-             monitor_processes(enigmatic, &info->processes);
+             enigmatic_monitor_memory(enigmatic, &info->meminfo);
+             enigmatic_monitor_sensors(enigmatic, &info->sensors);
+             enigmatic_monitor_power(enigmatic, &info->power);
+             enigmatic_monitor_batteries(enigmatic, &info->batteries);
+             enigmatic_monitor_network_interfaces(enigmatic, &info->network_interfaces);
+             enigmatic_monitor_file_systems(enigmatic, &info->file_systems);
+             enigmatic_monitor_processes(enigmatic, &info->processes);
 
              ENIGMATIC_LOG_HEADER(enigmatic, EVENT_BLOCK_END);
 
@@ -141,9 +141,9 @@ enigmatic_init(Enigmatic *enigmatic)
 
    enigmatic_log_open(enigmatic);
 
-   monitor_batteries_init();
-   monitor_sensors_init();
-   monitor_power_init(enigmatic);
+   enigmatic_monitor_batteries_init();
+   enigmatic_monitor_sensors_init();
+   enigmatic_monitor_power_init(enigmatic);
 }
 
 static void
@@ -158,9 +158,9 @@ enigmatic_shutdown(Enigmatic *enigmatic)
    EINA_LIST_FREE(enigmatic->unique_ids, id)
      free(id);
 
-   monitor_batteries_shutdown();
-   monitor_sensors_shutdown();
-   monitor_power_shutdown();
+   enigmatic_monitor_batteries_shutdown();
+   enigmatic_monitor_sensors_shutdown();
+   enigmatic_monitor_power_shutdown();
 
    enigmatic_server_shutdown(enigmatic);
 

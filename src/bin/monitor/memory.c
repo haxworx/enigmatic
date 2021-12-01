@@ -13,7 +13,7 @@ memory_refresh(Enigmatic *enigmatic, Meminfo *mem)
 }
 
 Eina_Bool
-monitor_memory(Enigmatic *enigmatic, Meminfo *mem)
+enigmatic_monitor_memory(Enigmatic *enigmatic, Meminfo *mem)
 {
    Meminfo mem_now;
 

@@ -62,7 +62,7 @@ file_systems_refresh(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 }
 
 Eina_Bool
-monitor_file_systems(Enigmatic *enigmatic, Eina_Hash **cache_hash)
+enigmatic_monitor_file_systems(Enigmatic *enigmatic, Eina_Hash **cache_hash)
 {
    Eina_List *l, *file_systems;
    File_System *fs, *fs2;
