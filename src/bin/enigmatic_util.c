@@ -110,7 +110,7 @@ enigmatic_launch(void)
 Eina_Bool
 enigmatic_running(void)
 {
-   return system("enigmatic -p");
+   return !system("enigmatic -p");
 }
 
 char *

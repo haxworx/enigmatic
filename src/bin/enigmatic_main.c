@@ -199,13 +199,13 @@ int main(int argc, char **argv)
         if ((!strcasecmp(argv[i], "-h")) || (!strcasecmp(argv[i], "--help")))
           usage();
         else if (!strcmp(argv[i], "-p"))
-          exit(enigmatic_query_send("PING"));
+          exit(!enigmatic_query_send("PING"));
         else if (!strcmp(argv[i], "--interval-normal"))
-          exit(enigmatic_query_send("interval-normal"));
+          exit(!enigmatic_query_send("interval-normal"));
         else if (!strcmp(argv[i], "--interval-medium"))
-          exit(enigmatic_query_send("interval-medium"));
+          exit(!enigmatic_query_send("interval-medium"));
         else if (!strcmp(argv[i], "--interval-slow"))
-          exit(enigmatic_query_send("interval-slow"));
+          exit(!enigmatic_query_send("interval-slow"));
         else if (!strcmp(argv[i], "-s"))
           {
              enigmatic_terminate();
