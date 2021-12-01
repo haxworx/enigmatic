@@ -184,9 +184,9 @@ usage(void)
           "Where OPTIONS can one of: \n"
           "   -s                 Stop enigmatic daemon.\n"
           "   -p                 Ping enigmatic daemon.\n"
-          "   --interval-normal  Set enigmatic daemon interval normal.\n"
-          "   --interval-medium  Set enigmatic daemon interval medium.\n"
-          "   --interval-slow    Set enigmatic daemon interval slow.\n"
+          "   --interval-normal  Set enigmatic daemon poll interval (normal).\n"
+          "   --interval-medium  Set enigmatic daemon poll interval (medium).\n"
+          "   --interval-slow    Set enigmatic daemon poll interval (slow).\n"
           "   -h | --help        This menu.\n",
           PACKAGE);
    exit(0);
