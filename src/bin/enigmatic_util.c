@@ -18,14 +18,12 @@ enigmatic_pidfile_path(void)
    return _pidfile_path();
 }
 
+// Store only (see enigmatic_log_lock).
 Eina_Bool
 enigmatic_pidfile_create(Enigmatic *enigmatic)
 {
    char path[PATH_MAX], *tmp;
    FILE *f;
-
-   // XXX: FIXME
-   // ERROR("Program already running");
 
    snprintf(path, sizeof(path), "%s/%s", enigmatic_cache_dir_get(), PACKAGE);
    if (!ecore_file_exists(path))
