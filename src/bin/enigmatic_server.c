@@ -21,20 +21,20 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
    if (!strcmp(msg, "PING"))
      ecore_con_client_send(ev->client, "PONG", 5);
    else if (!strcmp(msg, "interval-slow"))
-    {
-       contentious_update = 1;
-       interval = INTERVAL_SLOW;
-    }
+     {
+        contentious_update = 1;
+        interval = INTERVAL_SLOW;
+     }
    else if (!strcmp(msg, "interval-medium"))
-    {
-       contentious_update = 1;
-       interval = INTERVAL_MEDIUM;
-    }
+     {
+        contentious_update = 1;
+        interval = INTERVAL_MEDIUM;
+     }
    else if (!strcmp(msg, "interval-normal"))
-    {
-       contentious_update = 1;
-       interval = INTERVAL_NORMAL;
-    }
+     {
+        contentious_update = 1;
+        interval = INTERVAL_NORMAL;
+     }
 
    if (contentious_update)
      {
