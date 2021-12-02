@@ -175,7 +175,7 @@ void
 usage(void)
 {
    printf("%s [OPTIONS]\n"
-          "Where OPTIONS can one of: \n"
+          "Where OPTIONS can be one of: \n"
           "   -s                 Stop enigmatic daemon.\n"
           "   -p                 Ping enigmatic daemon.\n"
           "   --interval-normal  Set enigmatic daemon poll interval (normal).\n"
