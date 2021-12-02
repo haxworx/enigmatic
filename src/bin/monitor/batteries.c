@@ -171,17 +171,19 @@ enigmatic_monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         b = eina_hash_find(*cache_hash, bat->name);
         if (!b)
           {
-             bat->unique_id = unique_id_find(&enigmatic->unique_ids);
+             Battery *new_bat = calloc(1, sizeof(Battery));
+             memcpy(new_bat, bat, sizeof(Battery));
+             new_bat->unique_id = unique_id_find(&enigmatic->unique_ids);
 
              Message msg;
              msg.type = MESG_ADD;
              msg.object_type = BATTERY;
              msg.number = 1;
-             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, bat, sizeof(Battery));
+             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, new_bat, sizeof(Battery));
 
-             DEBUG("battery add: %s", bat->name);
+             DEBUG("battery add: %s", new_bat->name);
 
-             eina_hash_add(*cache_hash, bat->name, bat);
+             eina_hash_add(*cache_hash, bat->name, new_bat);
              continue;
           }
 

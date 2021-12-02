@@ -78,7 +78,7 @@ sensors_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
    while (!ecore_thread_check(thread))
      {
         eina_lock_take(&sensors_lock);
-        if ((it) && (!(it % 20)))
+        if ((it) && (!(it % 3)))
           {
              EINA_LIST_FREE(sensors, sensor)
                free(sensor);
@@ -191,16 +191,18 @@ enigmatic_monitor_sensors(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         s = eina_hash_find(*cache_hash, key);
         if (!s)
           {
-             sensor->unique_id = unique_id_find(&enigmatic->unique_ids);
+             Sensor *new_sensor = calloc(1, sizeof(Sensor));
+             memcpy(new_sensor, sensor, sizeof(Sensor));
+             new_sensor->unique_id = unique_id_find(&enigmatic->unique_ids);
 
              Message msg;
              msg.type = MESG_ADD;
              msg.object_type = SENSOR;
              msg.number = 1;
-             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, sensor, sizeof(Sensor));
+             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, new_sensor, sizeof(Sensor));
 
              DEBUG("sensor %s added", key);
-             eina_hash_add(*cache_hash, key, sensor);
+             eina_hash_add(*cache_hash, key, new_sensor);
              continue;
           }
 
