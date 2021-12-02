@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define EXPERIMENTING 1
-
 #define HEADER_MAGIC 0xf00dcafe
 
 typedef enum

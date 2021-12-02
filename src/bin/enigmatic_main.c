@@ -121,21 +121,17 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
 static void
 enigmatic_init(Enigmatic *enigmatic)
 {
+   eina_lock_new(&enigmatic->update_lock);
    enigmatic->pid = getpid();
    enigmatic_pidfile_create(enigmatic);
 
    enigmatic->device_refresh_interval = 900 * 10;
    enigmatic->log.hour = -1;
    enigmatic->interval = enigmatic->interval_update = INTERVAL_NORMAL;
-
-   enigmatic->unique_ids = NULL;
    enigmatic->broadcast = 1;
 
    enigmatic_config_init();
-
    enigmatic->config = enigmatic_config_load();
-
-   eina_lock_new(&enigmatic->update_lock);
 
    enigmatic_server_init(enigmatic);
 
@@ -151,8 +147,6 @@ enigmatic_shutdown(Enigmatic *enigmatic)
 {
    void *id;
 
-   enigmatic_config_save(enigmatic->config);
-
    enigmatic_log_close(enigmatic);
 
    EINA_LIST_FREE(enigmatic->unique_ids, id)
@@ -164,10 +158,10 @@ enigmatic_shutdown(Enigmatic *enigmatic)
 
    enigmatic_server_shutdown(enigmatic);
 
+   enigmatic_config_save(enigmatic->config);
    enigmatic_config_shutdown();
 
    enigmatic_pidfile_delete(enigmatic);
-
    eina_lock_free(&enigmatic->update_lock);
 }
 
@@ -226,10 +220,8 @@ int main(int argc, char **argv)
 
    enigmatic->handler = ecore_event_handler_add(ECORE_EVENT_SIGNAL_EXIT, cb_shutdown, enigmatic);
 
-   enigmatic->thread = ecore_thread_run(enigmatic_system_monitor,
-                                        NULL,
-                                        NULL,
-                                        enigmatic);
+   enigmatic->thread = ecore_thread_run(enigmatic_system_monitor, NULL, NULL, enigmatic);
+
    ecore_main_loop_begin();
 
    enigmatic_shutdown(enigmatic);
