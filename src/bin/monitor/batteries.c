@@ -65,7 +65,7 @@ battery_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
    while (!ecore_thread_check(thread))
      {
         eina_lock_take(&batteries_lock);
-        if ((it) && (!(it % 10)))
+        if ((it) && (!(it % 2)))
           {
              EINA_LIST_FREE(batteries, bat)
                free(bat);
@@ -172,18 +172,21 @@ enigmatic_monitor_batteries(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         if (!b)
           {
              Battery *new_bat = calloc(1, sizeof(Battery));
-             memcpy(new_bat, bat, sizeof(Battery));
-             new_bat->unique_id = unique_id_find(&enigmatic->unique_ids);
+             if (new_bat)
+               {
+                  memcpy(new_bat, bat, sizeof(Battery));
+                  new_bat->unique_id = unique_id_find(&enigmatic->unique_ids);
 
-             Message msg;
-             msg.type = MESG_ADD;
-             msg.object_type = BATTERY;
-             msg.number = 1;
-             enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, new_bat, sizeof(Battery));
+                  Message msg;
+                  msg.type = MESG_ADD;
+                  msg.object_type = BATTERY;
+                  msg.number = 1;
+                  enigmatic_log_obj_write(enigmatic, EVENT_MESSAGE, msg, new_bat, sizeof(Battery));
 
-             DEBUG("battery add: %s", new_bat->name);
+                  DEBUG("battery add: %s", new_bat->name);
 
-             eina_hash_add(*cache_hash, bat->name, new_bat);
+                  eina_hash_add(*cache_hash, bat->name, new_bat);
+               }
              continue;
           }
 
