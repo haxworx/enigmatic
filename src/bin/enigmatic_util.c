@@ -7,7 +7,7 @@
 static char *
 _pidfile_path(void)
 {
-   char path[PATH_MAX];
+   char path[PATH_MAX * 2 + 1];
    snprintf(path, sizeof(path), "%s/%s/%s", enigmatic_cache_dir_get(), PACKAGE, PID_FILE_NAME);
    return strdup(path);
 }
@@ -22,7 +22,7 @@ enigmatic_pidfile_path(void)
 Eina_Bool
 enigmatic_pidfile_create(Enigmatic *enigmatic)
 {
-   char path[PATH_MAX], *tmp;
+   char path[PATH_MAX * 2 + 1], *tmp;
    FILE *f;
 
    snprintf(path, sizeof(path), "%s/%s", enigmatic_cache_dir_get(), PACKAGE);
@@ -116,7 +116,7 @@ enigmatic_running(void)
 char *
 enigmatic_log_path(void)
 {
-   char path[PATH_MAX];
+   char path[PATH_MAX * 2 + 1];
 
    snprintf(path, sizeof(path), "%s/%s", enigmatic_cache_dir_get(), PACKAGE);
    if (!ecore_file_exists(path))
@@ -130,7 +130,7 @@ enigmatic_log_path(void)
 char *
 enigmatic_log_directory(void)
 {
-   char path[PATH_MAX];
+   char path[PATH_MAX * 2 + 1];
 
    snprintf(path, sizeof(path), "%s/%s", enigmatic_cache_dir_get(), PACKAGE);
 
