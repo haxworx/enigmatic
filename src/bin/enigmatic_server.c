@@ -11,6 +11,7 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
    Enigmatic_Server *server;
    Enigmatic *enigmatic;
    Interval interval;
+   int sent = 0;
    Eina_Bool contentious_update = 0;
    Ecore_Con_Event_Client_Data *ev = event;
 
@@ -19,7 +20,7 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
    enigmatic = server->enigmatic;
 
    if (!strcmp(msg, "PING"))
-     ecore_con_client_send(ev->client, "PONG", 5);
+     sent = ecore_con_client_send(ev->client, "PONG", 5);
    else if (!strcmp(msg, "interval-slow"))
      {
         contentious_update = 1;
@@ -41,10 +42,11 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
         eina_lock_take(&enigmatic->update_lock);
         enigmatic->interval_update = interval;
         eina_lock_release(&enigmatic->update_lock);
-        ecore_con_client_send(ev->client, "OK", 3);
+        sent = ecore_con_client_send(ev->client, "OK", 3);
      }
 
-   ecore_con_client_flush(ev->client);
+   if (sent)
+     ecore_con_client_flush(ev->client);
 
    return ECORE_CALLBACK_RENEW;
 }
