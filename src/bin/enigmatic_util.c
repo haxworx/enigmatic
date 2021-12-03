@@ -137,3 +137,24 @@ enigmatic_log_directory(void)
    return strdup(path);
 }
 
+void
+enigmatic_about(void)
+{
+   printf("\n"
+          "          _.,----,._\n"
+          "        .:'        `:.\n"
+          "      .'              `.\n"
+          "     .'                `.\n"
+          "     :                  :\n"
+          "     `    .'`':'`'`/    '\n"
+          "      `.   \\  |   /   ,'\n"
+          "        \\   \\ |  /   /\n"
+          "         `\\_..,,.._/'\n"
+          "          {`'-,_`'-}\n"
+          "          {`'-,_`'-}\n"
+          "          {`'-,_`'-}\n"
+          "           `YXXXXY'\n"
+          "             ~^^~\n\n"
+          "%s (%s)\n", PACKAGE, PACKAGE_VERSION);
+   exit(0);
+}

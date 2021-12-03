@@ -181,6 +181,7 @@ usage(void)
           "   --interval-normal  Set enigmatic daemon poll interval (normal).\n"
           "   --interval-medium  Set enigmatic daemon poll interval (medium).\n"
           "   --interval-slow    Set enigmatic daemon poll interval (slow).\n"
+          "   -v | --version     Enigmatic version.\n"
           "   -h | --help        This menu.\n",
           PACKAGE);
    exit(0);
@@ -192,6 +193,8 @@ int main(int argc, char **argv)
      {
         if ((!strcasecmp(argv[i], "-h")) || (!strcasecmp(argv[i], "--help")))
           usage();
+        else if ((!strcasecmp(argv[i], "-v")) || (!strcasecmp(argv[i], "--version")))
+          enigmatic_about();
         else if (!strcmp(argv[i], "-p"))
           exit(!enigmatic_query_send("PING"));
         else if (!strcmp(argv[i], "--interval-normal"))

@@ -33,4 +33,7 @@ enigmatic_log_path(void);
 char *
 enigmatic_log_directory(void);
 
+void
+enigmatic_about(void);
+
 #endif
