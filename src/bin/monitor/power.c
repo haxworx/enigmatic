@@ -19,6 +19,9 @@ power_refresh(Enigmatic *enigmatic, Eina_Bool *ac)
 static void
 power_thread(void *data EINA_UNUSED, Ecore_Thread *thread)
 {
+#if 1 == 1 || (EFL_VERSION_MAJOR >= 1 && EFL_VERSION_MINOR >= 26)
+   ecore_thread_name_set(thread, "powermon");
+#endif
    while (!ecore_thread_check(thread))
      {
         eina_lock_take(&power_lock);

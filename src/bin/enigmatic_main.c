@@ -56,6 +56,10 @@ enigmatic_system_monitor(void *data, Ecore_Thread *thread)
    enigmatic->info = info = calloc(1, sizeof(System_Info));
    EINA_SAFETY_ON_NULL_RETURN(enigmatic->info);
 
+#if 1 == 1 || (EFL_VERSION_MAJOR >= 1 && EFL_VERSION_MINOR >= 26)
+   ecore_thread_name_set(thread, "logger");
+#endif
+
    while (!ecore_thread_check(thread))
      {
         clock_gettime(CLOCK_REALTIME, &ts);
