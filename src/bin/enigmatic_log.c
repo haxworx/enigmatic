@@ -428,7 +428,8 @@ enigmatic_log_decompress(const char *path, uint32_t *length)
    while (tok)
      {
         int sz, csz;
-        sscanf(tok, "%i-%i", &sz, &csz);
+        if ((sscanf(tok, "%i-%i", &sz, &csz)) != 2)
+          ERROR("%s (token parsing)", path2);
 
         total += sz + 1;
         void *t = realloc(out, total);
