@@ -22,19 +22,19 @@ some unusualish hardware.
 
 ## Usage
 
-Generally speaking write a client which executes the enigmatic
-daemon.
+To stop the daemon:
+
+   $ enigmatic -s
 
 ## Examples
+
+Enigmatic comes with some example client applications to
+visualise (or via speech synthesis) system events.
 
 1. enigmatic_client (reference client).
 2. memories (EFL memory viewer).
 3. cpeew (cpu visualisation).
 4. blindmin (system administration for the blind).
-
-To stop the daemon:
-
-   $ enigmatic -s
 
 ## Bugs
 
