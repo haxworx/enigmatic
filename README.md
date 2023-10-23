@@ -25,6 +25,13 @@ some unusualish hardware.
 Generally speaking write a client which executes the enigmatic
 daemon.
 
+## Examples
+
+1. enigmatic_client (reference client).
+2. memories (EFL memory viewer).
+3. cpeew (cpu visualisation).
+4. blindmin (system administration for the blind).
+
 To stop the daemon:
 
    $ enigmatic -s
