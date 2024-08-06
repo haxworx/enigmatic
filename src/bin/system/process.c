@@ -208,6 +208,8 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
 
    char *end = strchr(name, ' ');
    if (end) *end = '\0';
+   end = strchr(name, ':');
+   if (end) *end = '\0';
 
    p->command = strdup(name);
 }
