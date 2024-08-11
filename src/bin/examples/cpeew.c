@@ -103,7 +103,7 @@ elm_main(int argc, char **argv)
 
    colors_init();
 
-   client = client_open();
+   client = enigmatic_client_open();
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, 1);
 
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
@@ -131,11 +131,11 @@ elm_main(int argc, char **argv)
    elm_win_center(win, 1, 1);
    evas_object_show(win);
 
-   client_monitor_add(client, cb_event_change_init, cb_event_change, NULL);
+   enigmatic_client_monitor_add(client, cb_event_change_init, cb_event_change, NULL);
 
    ecore_main_loop_begin();
 
-   client_del(client);
+   enigmatic_client_del(client);
 
    return 0;
 }

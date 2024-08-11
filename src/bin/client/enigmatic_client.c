@@ -59,7 +59,7 @@ buffer_clear(Buffer *buf)
 }
 
 static void
-client_reset(Enigmatic_Client *client)
+enigmatic_client_reset(Enigmatic_Client *client)
 {
    buffer_clear(&client->zbuf);
    buffer_clear(&client->buf);
@@ -109,7 +109,7 @@ callback_fire(Enigmatic_Client *client)
 }
 
 Eina_Bool
-client_event_is_snapshot(Enigmatic_Client *client)
+enigmatic_client_event_is_snapshot(Enigmatic_Client *client)
 {
    return client->header.event == EVENT_BLOCK_END;
 }
@@ -1129,13 +1129,13 @@ event_end_of_file(Enigmatic_Client *client EINA_UNUSED)
 }
 
 Enigmatic_Client *
-client_open(void)
+enigmatic_client_open(void)
 {
-   return client_path_open(enigmatic_log_path());
+   return enigmatic_client_path_open(enigmatic_log_path());
 }
 
 Enigmatic_Client *
-client_path_open(char *filename)
+enigmatic_client_path_open(char *filename)
 {
    Enigmatic_Client *client = calloc(1, sizeof(Enigmatic_Client));
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
@@ -1158,9 +1158,9 @@ client_path_open(char *filename)
 }
 
 static Eina_Bool
-client_reopen(Enigmatic_Client *client, char *filename)
+enigmatic_client_reopen(Enigmatic_Client *client, char *filename)
 {
-   client_reset(client);
+   enigmatic_client_reset(client);
 
    if (client->fd != -1)
      close(client->fd);
@@ -1187,7 +1187,7 @@ client_reopen(Enigmatic_Client *client, char *filename)
 }
 
 void
-client_del(Enigmatic_Client *client)
+enigmatic_client_del(Enigmatic_Client *client)
 {
    if (client->follow)
      {
@@ -1228,7 +1228,7 @@ get_block_size(const LZ4F_frameInfo_t *info)
 
 // WIP
 void
-client_read(Enigmatic_Client *client)
+enigmatic_client_read(Enigmatic_Client *client)
 {
    struct stat st;
    int n;
@@ -1245,7 +1245,7 @@ client_read(Enigmatic_Client *client)
         client->fd = open(client->filename, O_RDONLY);
         if (client->fd == -1)
           ERROR("open() %s\n", strerror(errno));
-        client_reset(client);
+        enigmatic_client_reset(client);
      }
 
    if (!client->compressed)
@@ -1391,11 +1391,11 @@ cb_file_modified(void *data, int type EINA_UNUSED, void *event EINA_UNUSED)
    if ((st.st_size) && (st.st_size < client->file_size))
      {
         client->truncated = 1;
-        client_read(client);
+        enigmatic_client_read(client);
      }
    else if (st.st_size > client->file_size)
      {
-        client_read(client);
+        enigmatic_client_read(client);
         if (client->event_snapshot_init.callback)
           {
              client->event_snapshot_init.callback(client, &client->snapshot, client->event_snapshot_init.data);
@@ -1432,7 +1432,7 @@ cb_thread_fallback_feedback(void *data, Ecore_Thread *thread EINA_UNUSED, void *
 #endif
 
 void
-client_event_callback_add(Enigmatic_Client *client, Enigmatic_Client_Event_Type type, Event_Callback *cb_event, void *data)
+enigmatic_client_event_callback_add(Enigmatic_Client *client, Enigmatic_Client_Event_Type type, Event_Callback *cb_event, void *data)
 {
    switch (type)
      {
@@ -1500,7 +1500,7 @@ client_event_callback_add(Enigmatic_Client *client, Enigmatic_Client_Event_Type 
 }
 
 void
-client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_init, Snapshot_Callback *cb_event_change, void *data)
+enigmatic_client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_init, Snapshot_Callback *cb_event_change, void *data)
 {
    client->follow = 1;
    client->event_snapshot_init.callback = cb_event_change_init;
@@ -1517,14 +1517,14 @@ client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_
 }
 
 void
-client_snapshot_callback_set(Enigmatic_Client *client, Snapshot_Callback *cb_event_change, void *data)
+enigmatic_client_snapshot_callback_set(Enigmatic_Client *client, Snapshot_Callback *cb_event_change, void *data)
 {
    client->event_snapshot.callback = cb_event_change;
    client->event_snapshot.data = data;
 }
 
 Enigmatic_Client *
-client_add(void)
+enigmatic_client_add(void)
 {
    Enigmatic_Client *client = calloc(1, sizeof(Enigmatic_Client));
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
@@ -1536,7 +1536,7 @@ client_add(void)
 }
 
 void
-client_follow_enabled_set(Enigmatic_Client *client, Eina_Bool enabled)
+enigmatic_client_follow_enabled_set(Enigmatic_Client *client, Eina_Bool enabled)
 {
    client->follow = enabled;
 }
@@ -1577,7 +1577,7 @@ path_datestamp(const char *path)
 }
 
 static Eina_List *
-client_replay_hours(Enigmatic_Client *client)
+enigmatic_client_replay_hours(Enigmatic_Client *client)
 {
    int hour_last, hours;
    time_t t;
@@ -1635,30 +1635,30 @@ client_replay_hours(Enigmatic_Client *client)
 }
 
 Eina_Bool
-client_replay(Enigmatic_Client *client)
+enigmatic_client_replay(Enigmatic_Client *client)
 {
    char *path;
-   Eina_List *files = client_replay_hours(client);
+   Eina_List *files = enigmatic_client_replay_hours(client);
    if (!files) return 0;
 
    EINA_LIST_FREE(files, path)
      {
-        client_reopen(client, path);
-        client_read(client);
+        enigmatic_client_reopen(client, path);
+        enigmatic_client_read(client);
      }
 
    return 1;
 }
 
 void
-client_replay_time_start_set(Enigmatic_Client *client, uint32_t secs)
+enigmatic_client_replay_time_start_set(Enigmatic_Client *client, uint32_t secs)
 {
    client->replay.enabled = 1;
    client->replay.start_time = secs;
 }
 
 void
-client_replay_time_end_set(Enigmatic_Client *client, uint32_t secs)
+enigmatic_client_replay_time_end_set(Enigmatic_Client *client, uint32_t secs)
 {
    client->replay.end_time = secs;
 }

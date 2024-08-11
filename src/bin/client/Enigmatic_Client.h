@@ -130,45 +130,45 @@ typedef enum
 } Enigmatic_Client_Event_Type;
 
 Enigmatic_Client *
-client_open(void);
+enigmatic_client_open(void);
 
 void
-client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_init, Snapshot_Callback *cb_event_change, void *data);
+enigmatic_client_monitor_add(Enigmatic_Client *client, Snapshot_Callback *cb_event_change_init, Snapshot_Callback *cb_event_change, void *data);
 
 void
-client_event_callback_add(Enigmatic_Client *client, Enigmatic_Client_Event_Type type, Event_Callback *cb_event, void *data);
+enigmatic_client_event_callback_add(Enigmatic_Client *client, Enigmatic_Client_Event_Type type, Event_Callback *cb_event, void *data);
 
 void
-client_read(Enigmatic_Client *client);
+enigmatic_client_read(Enigmatic_Client *client);
 
 Enigmatic_Client *
-client_path_open(char *filename);
+enigmatic_client_path_open(char *filename);
 
 void
-client_del(Enigmatic_Client *client);
+enigmatic_client_del(Enigmatic_Client *client);
 
 Enigmatic_Client *
-client_add(void);
+enigmatic_client_add(void);
 
 void
-client_follow_enabled_set(Enigmatic_Client *client, Eina_Bool enabled);
+enigmatic_client_follow_enabled_set(Enigmatic_Client *client, Eina_Bool enabled);
 
 void
-client_snapshot_callback_set(Enigmatic_Client *client, Snapshot_Callback *cb_event_change, void *data);
+enigmatic_client_snapshot_callback_set(Enigmatic_Client *client, Snapshot_Callback *cb_event_change, void *data);
 
 /* Some events occur multiple times between block end. We can check for a snapshot event to reduce
  * the polling granuality when we don't want sub-second data.
  */
 Eina_Bool
-client_event_is_snapshot(Enigmatic_Client *client);
+enigmatic_client_event_is_snapshot(Enigmatic_Client *client);
 
 void
-client_replay_time_start_set(Enigmatic_Client *client, uint32_t secs);
+enigmatic_client_replay_time_start_set(Enigmatic_Client *client, uint32_t secs);
 
 void
-client_replay_time_end_set(Enigmatic_Client *client, uint32_t secs);
+enigmatic_client_replay_time_end_set(Enigmatic_Client *client, uint32_t secs);
 
 Eina_Bool
-client_replay(Enigmatic_Client *client);
+enigmatic_client_replay(Enigmatic_Client *client);
 
 #endif

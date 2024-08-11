@@ -80,7 +80,7 @@ cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
    Meminfo *memory;
    Win_Data *pd;
 
-   if (!client_event_is_snapshot(client)) return;
+   if (!enigmatic_client_event_is_snapshot(client)) return;
 
    pd = data;
    memory = &s->meminfo;
@@ -242,7 +242,7 @@ elm_main(int argc, char **argv)
 
    if (!enigmatic_launch()) return 1;
 
-   Enigmatic_Client *client = client_open();
+   Enigmatic_Client *client = enigmatic_client_open();
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, 1);
 
    Win_Data *pd = calloc(1, sizeof(Win_Data));
@@ -278,11 +278,11 @@ elm_main(int argc, char **argv)
 
    evas_object_event_callback_add(win, EVAS_CALLBACK_DEL, cb_win_del, pd);
 
-   client_monitor_add(client, cb_event_change_init, cb_event_change, pd);
+   enigmatic_client_monitor_add(client, cb_event_change_init, cb_event_change, pd);
 
    ecore_main_loop_begin();
 
-   client_del(client);
+   enigmatic_client_del(client);
 
    return 0;
 }

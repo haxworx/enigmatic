@@ -166,21 +166,21 @@ cb_recording_delay(Enigmatic_Client *client, Enigmatic_Client_Event *event, void
 static void
 cb_event_change_init(Enigmatic_Client *client, Snapshot *s, void *data)
 {
-   client_event_callback_add(client, EVENT_CPU_ADD, cb_cpu_add, NULL);
-   client_event_callback_add(client, EVENT_CPU_DEL, cb_cpu_del, NULL);
-   client_event_callback_add(client, EVENT_BATTERY_ADD, cb_battery_add, NULL);
-   client_event_callback_add(client, EVENT_BATTERY_DEL, cb_battery_del, NULL);
-   client_event_callback_add(client, EVENT_POWER_SUPPLY_ADD, cb_power_supply_add, NULL);
-   client_event_callback_add(client, EVENT_POWER_SUPPLY_DEL, cb_power_supply_del, NULL);
-   client_event_callback_add(client, EVENT_SENSOR_ADD, cb_sensor_add, NULL);
-   client_event_callback_add(client, EVENT_SENSOR_DEL, cb_sensor_del, NULL);
-   client_event_callback_add(client, EVENT_NETWORK_IFACE_ADD, cb_network_iface_add, NULL);
-   client_event_callback_add(client, EVENT_NETWORK_IFACE_DEL, cb_network_iface_del, NULL);
-   client_event_callback_add(client, EVENT_FILE_SYSTEM_ADD, cb_file_system_add, NULL);
-   client_event_callback_add(client, EVENT_FILE_SYSTEM_DEL, cb_file_system_del, NULL);
-   client_event_callback_add(client, EVENT_PROCESS_ADD, cb_process_add, NULL);
-   client_event_callback_add(client, EVENT_PROCESS_DEL, cb_process_del, NULL);
-   client_event_callback_add(client, EVENT_RECORD_DELAY, cb_recording_delay, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_CPU_ADD, cb_cpu_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_CPU_DEL, cb_cpu_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_BATTERY_ADD, cb_battery_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_BATTERY_DEL, cb_battery_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_POWER_SUPPLY_ADD, cb_power_supply_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_POWER_SUPPLY_DEL, cb_power_supply_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_SENSOR_ADD, cb_sensor_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_SENSOR_DEL, cb_sensor_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_NETWORK_IFACE_ADD, cb_network_iface_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_NETWORK_IFACE_DEL, cb_network_iface_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_FILE_SYSTEM_ADD, cb_file_system_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_FILE_SYSTEM_DEL, cb_file_system_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_PROCESS_ADD, cb_process_add, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_PROCESS_DEL, cb_process_del, NULL);
+   enigmatic_client_event_callback_add(client, EVENT_RECORD_DELAY, cb_recording_delay, NULL);
 }
 
 static void
@@ -188,16 +188,16 @@ monitor(void)
 {
    if (!enigmatic_launch()) return;
 
-   Enigmatic_Client *client = client_open();
+   Enigmatic_Client *client = enigmatic_client_open();
    EINA_SAFETY_ON_NULL_RETURN(client);
 
-   client_monitor_add(client, cb_event_change_init, cb_event_change, NULL);
+   enigmatic_client_monitor_add(client, cb_event_change_init, cb_event_change, NULL);
 
    ecore_main_loop_begin();
 
    enigmatic_terminate();
 
-   client_del(client);
+   enigmatic_client_del(client);
 }
 
 static Eina_Bool
