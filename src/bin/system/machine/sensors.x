@@ -509,16 +509,17 @@ battery_update(Battery *bat)
         buf = file_contents(path);
         if (buf)
           {
+             charge_full = 100;
              if (buf[0] == 'F')
-               bat->charge_current = 100;
+               charge_current = 100;
              else if (buf[0] == 'H')
-               bat->charge_current = 75;
+               charge_current = 75;
              else if (buf[0] == 'N')
-               bat->charge_current = 50;
+               charge_current = 50;
              else if (buf[0] == 'L')
-               bat->charge_current = 25;
+               charge_current = 25;
              else if (buf[0] == 'C')
-               bat->charge_current = 5;
+               charge_current = 5;
              free(buf);
           }
      }
