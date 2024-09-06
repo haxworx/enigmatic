@@ -181,9 +181,27 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
           {
              int sz = ftell(f);
              Eina_Strbuf *buf = eina_strbuf_new();
+             char *line2 = strdup(line);
+             if (line2)
+               {
+                  char *p, *p2;
+                  const char *file;
 
-             if (ecore_file_exists(line))
-               snprintf(name, len, "%s", ecore_file_file_get(line));
+                  for (p = line, p2 = line2; *p; p++, p2++)
+                    {
+                       if (isblank(*p))
+                         {
+                            *p2 = '\0';
+                            break;
+                         }
+                       p2[0] = p[0];
+                       p2[1] = '\0';
+                    }
+                  file = ecore_file_file_get(line2);
+                  snprintf(name, len, "%s", file);
+                  free(line2);
+                }
+             else name[0] = '\0';
 
              const char *cp = line;
              for (int i = 0; i < sz; i++)
