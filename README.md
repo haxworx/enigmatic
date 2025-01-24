@@ -1,41 +1,93 @@
 # Enigmatic
 
-Disk streaming, system monitor, system log and querying
-toolkit.
+## Table of Contents
 
-The daemon will stream to disk (saving a history which can be
-played back). The clients are at the disposal of a developer.
+1. [Overview](#overview)
+2. [Features](#features)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Usage](#usage)
+6. [Examples](#examples)
+7. [Contributing](#contributing)
+8. [License](#license)
 
-The daemon compresses blocks using LZ4 compression, and when
-rotating will again crush/compress the historical log file.
+## Overview
 
-Writing a client tool is fairly straightforward. Check the
-examples folder for some example uses. The client API is
-event-driven.
+**Disk streaming, system monitoring, and querying toolkit**
 
-Currently CPU cores are logged every 1/10 second and all other
-system resources by the second. The daemon can alter its poll
-frequency on-demand via IPC.
+Enigmatic is a powerful toolkit that provides disk streaming, system monitoring, logging, and querying capabilities. Designed with developers in mind, it features an event-driven client API and an efficient daemon for resource tracking.
 
-Tested, as and when possible on Linux, FreeBSD and OpenBSD on
-some unusualish hardware.
+The Enigmatic daemon streams data to disk, creating a history that can be played back for analysis. Utilizing **LZ4 compression**, it efficiently compresses data blocks and further optimizes historical log files upon rotation.
+
+## Features
+
+- **Efficient Logging:** Tracks CPU cores every 1/10 second and other system resources every second.
+- **On-Demand Polling:** The daemon's polling frequency can be dynamically adjusted via IPC.
+- **Cross-Platform:** Tested on Linux, FreeBSD, and OpenBSD, including unique hardware configurations.
+- **Developer-Friendly:** Writing custom client tools is straightforward with the provided event-driven API.
+
+## Requirements
+
+Before installing Enigmatic, ensure you have the following dependencies installed:
+
+- **EFL (Enlightenment Foundation Libraries)**
+- **Meson build system**
+- **Ninja build tool**
+- **C compiler (e.g., GCC or Clang)**
+
+On Debian/Ubuntu-based systems, you can install dependencies with:
+
+```sh
+$ sudo apt install libefl-dev meson ninja-build gcc
+```
+
+On Fedora-based systems:
+
+```sh
+$ sudo dnf install efl-devel meson ninja-build gcc
+```
+
+## Installation
+
+To install Enigmatic, clone the repository and follow the build instructions using Meson and Ninja:
+
+```sh
+$ git clone https://github.com/your-repo/enigmatic.git
+$ cd enigmatic
+$ meson setup build
+$ ninja -C build
+$ sudo ninja -C build install
+```
 
 ## Usage
 
-To stop the daemon:
+Starting the Enigmatic daemon:
 
-   $ enigmatic -s
+```sh
+$ enigmatic
+```
+
+Stopping the daemon:
+
+```sh
+$ enigmatic -s
+```
 
 ## Examples
 
-Enigmatic comes with some example client applications to
-visualise (or via speech synthesis) system events.
+Enigmatic provides several example client applications to visualize and interact with system data:
 
-1. enigmatic_client (reference client).
-2. memories (EFL memory viewer).
-3. cpeew (cpu visualisation).
-4. blindmin (system administration for the blind).
+1. **enigmatic_client:** Reference client demonstrating core features.
+2. **memories:** EFL-based memory visualization tool.
+3. **cpeew:** CPU resource visualizer.
+4. **blindmin:** System administration tool designed for visually impaired users.
 
-## Bugs
+Explore the `examples` directory for detailed usage.
 
-None :)
+## Contributing
+
+Contributions are welcome! Feel free to submit issues or pull requests via our GitHub repository.
+
+## License
+
+Enigmatic is released under the MIT License. See the LICENSE file for details.
