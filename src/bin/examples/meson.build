@@ -14,7 +14,6 @@ executable('cpeew', src_cpu,
    include_directories     : [ inc, inc_client ],
    dependencies            : [ dep_client, dep_elm ],
    link_with               : lz4_lib,
-   gui_app                 : true,
    install                 : true)
 
 
@@ -28,7 +27,6 @@ executable('blindmin', src_blind,
    include_directories     : [ inc, inc_client ],
    dependencies            : [ dep_client, dep_elm ],
    link_with               : lz4_lib,
-   gui_app                 : false,
    install                 : true)
 
 src_memories = []
@@ -42,7 +40,6 @@ executable('memories', src_memories,
    include_directories     : [ inc, inc_client ],
    dependencies            : [ dep_client, dep_elm ],
    link_with               : lz4_lib,
-   gui_app                 : true,
    install                 : true)
 
 
@@ -55,6 +52,5 @@ executable('enigmatic_client', src_test,
    include_directories     : [ inc_client ],
    dependencies            : [ dep_client, dep_elm ],
    link_with               : lz4_lib,
-   gui_app                 : false,
    install                 : true)
 
