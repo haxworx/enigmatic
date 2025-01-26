@@ -52,7 +52,7 @@ $ sudo dnf install efl-devel meson ninja-build gcc
 To install Enigmatic, clone the repository and follow the build instructions using Meson and Ninja:
 
 ```sh
-$ git clone https://github.com/your-repo/enigmatic.git
+$ git clone https://github.com/haxworx/enigmatic
 $ cd enigmatic
 $ meson setup build
 $ ninja -C build
