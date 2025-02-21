@@ -1,2 +1,0 @@
-subdir('lib')
-subdir('bin')
