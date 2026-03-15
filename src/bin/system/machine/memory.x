@@ -1,7 +1,7 @@
 
 #if defined(__linux__)
 static unsigned long
-_meminfo_parse_line(const char *line)
+_meminfo_parse_line(char *line)
 {
    char *p, *tok;
 

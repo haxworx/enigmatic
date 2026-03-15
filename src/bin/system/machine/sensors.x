@@ -522,6 +522,14 @@ battery_update(Battery *bat)
                charge_current = 5;
              free(buf);
           }
+        snprintf(path, sizeof(path), "%s/capacity", link);
+        buf = file_contents(path);
+        if (buf)
+          {
+             charge_full = 100;
+             charge_current = atoi(buf);
+             free(buf);
+          }
      }
 done:
    if (link) free(link);

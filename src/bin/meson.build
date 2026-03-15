@@ -38,6 +38,7 @@ executable('enigmatic', src,
    include_directories  : [ config_dir, inc, inc_lz4 ],
    dependencies         : [ dep_eina, dep_eet, dep_ecore, dep_ecore_file, dep_ecore_con, deps_os ],
    link_with            : lz4_lib,
+   gui_app              : false,
    install              : true)
 
 src_start = files([
@@ -50,6 +51,7 @@ src_start += src_system
 executable('enigmatic_start', src_start,
    include_directories  : [ config_dir ],
    dependencies         : [ dep_eina, dep_ecore, dep_ecore_file ],
+   gui_app              : false,
    install              : true)
 
 if host_os == 'freebsd' or host_os == 'dragonfly'

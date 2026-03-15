@@ -50,11 +50,8 @@ else
   '''
   if cc.links(gettext_code)
     translate_enabled = true
-  endif
-endif
-
-if translate_enabled
     message('Intl Support Enabled')
+  endif
 endif
 
 ##### config.h
