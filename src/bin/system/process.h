@@ -21,7 +21,7 @@ typedef struct _Proc_Info
    int64_t     cpu_time;
    double      cpu_usage;
    int64_t     run_time;
-   int64_t     start_time;
+   int64_t     start;
 
    uint64_t    mem_size;
    uint64_t    mem_virt;

@@ -75,16 +75,16 @@ _states_init(void)
 #if defined(__linux__)
    _states['D']     = _("dsleep");
    _states['I']     = _("idle");
-   _states['R']     = _("running");
-   _states['S']     = _("sleeping");
-   _states['T']     = _("stopped");
+   _states['R']     = _("run");
+   _states['S']     = _("sleep");
+   _states['T']     = _("stop");
    _states['X']     = _("dead");
    _states['Z']     = _("zombie");
 #else
    _states[SIDL]    = _("idle");
-   _states[SRUN]    = _("running");
-   _states[SSLEEP]  = _("sleeping");
-   _states[SSTOP]   = _("stopped");
+   _states[SRUN]    = _("run");
+   _states[SSLEEP]  = _("sleep");
+   _states[SSTOP]   = _("stop");
 #if !defined(__MacOS__)
 #if !defined(__OpenBSD__)
    _states[SWAIT]   = _("wait");
@@ -93,15 +93,13 @@ _states_init(void)
 #endif
 #if defined(__OpenBSD__)
    _states[SDEAD]   = _("zombie");
-   _states[SONPROC] = _("running");
+   _states[SONPROC] = _("run");
 #endif
 #endif
 #endif
 }
-#ifndef __OpenBSD__
-static
-#endif
-const char *
+
+static const char *
 _process_state_name(char state)
 {
    static int init = 0;
@@ -165,7 +163,7 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
    char line[4096];
    int pid = p->pid;
 
-   snprintf(path, sizeof(path), "/proc/%d/exe", pid);
+   snprintf(path, sizeof(path), "/proc/%i/exe", pid);
    char *link = ecore_file_readlink(path);
    if (link)
      {
@@ -173,7 +171,7 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
         free(link);
      }
 
-   snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
+   snprintf(path, sizeof(path), "/proc/%i/cmdline", pid);
    FILE *f = fopen(path, "r");
    if (f)
      {
@@ -182,10 +180,10 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
              int sz = ftell(f);
              Eina_Strbuf *buf = eina_strbuf_new();
              char *line2 = strdup(line);
+
              if (line2)
-               {
-                  char *p, *p2;
-                  const char *file;
+               { // copy line up to first blank into line2 then 0 terminate
+                  char *p, *p2, *file;
 
                   for (p = line, p2 = line2; *p; p++, p2++)
                     {
@@ -197,10 +195,24 @@ _cmd_args(Proc_Info *p, char *name, size_t len)
                        p2[0] = p[0];
                        p2[1] = '\0';
                     }
-                  file = ecore_file_file_get(line2);
+                  // use file portion of this path as the name
+                  if ((line2[0] >= 'A') && (line2[0] <= 'Z') &&
+                      (line2[1] == ':') && (line2[2] == '\\'))
+                   { // special case what looks like as wine/proton windows
+                     // exe cmdline. fine last backslash similar to below
+                     file = strrchr(line2, '\\');
+                     if (file) file++;
+                     else file = line2;
+                   }
+                  else
+                   { // get last / and use name of file after that if / exists
+                     file = strrchr(line2, '/');
+                     if (file) file++;
+                     else file = line2;
+                   }
                   snprintf(name, len, "%s", file);
                   free(line2);
-                }
+               }
              else name[0] = '\0';
 
              const char *cp = line;
@@ -261,7 +273,7 @@ static int64_t
 _boot_time(void)
 {
    FILE *f;
-   int64_t boot_time;
+   int64_t boot_time = 0;
    char buf[4096];
    double uptime = 0.0;
 
@@ -270,7 +282,6 @@ _boot_time(void)
 
    if (fgets(buf, sizeof(buf), f))
      sscanf(buf, "%lf", &uptime);
-   else boot_time = 0;
 
    fclose(f);
 
@@ -280,8 +291,7 @@ _boot_time(void)
    return boot_time;
 }
 
-typedef struct
-{
+typedef struct {
    int pid, ppid, utime, stime, cutime, cstime;
    int psr, pri, nice, numthreads;
    long long int start_time, run_time;
@@ -295,9 +305,9 @@ static Eina_Bool
 _stat(const char *path, Stat *st)
 {
    FILE *f;
+   char *p;
    char line[4096];
-   char name[1024];
-   int dummy, len = 0;
+   int dummy, i, slen, len = 0;
    static long tck = 0;
    static int64_t boot_time = 0;
 
@@ -310,10 +320,28 @@ _stat(const char *path, Stat *st)
 
    if (fgets(line, sizeof(line), f))
      {
+        slen = strlen(line);
+        for (i = 0; i < slen; i++)
+          {
+             Eina_Bool found = EINA_FALSE;
+             const char states[] = {'D', 'I', 'R', 'X', 'T', 'S', 'Z'};
+             // Get the index of state value.
+             for (int j = 0; j < sizeof(states); j++)
+               {
+                  if (line[i] == states[j])
+                    {
+                        found = EINA_TRUE;
+                        break;
+                    }
+               }
+             if ((i < (slen + 1)) && (found) && (line[i+1] == ' '))
+               break;
+          }
 
-        len = sscanf(line, "%d %s %c %d %d %d %d %d %u %u %u %u %u %d %d %d"
+        // Scan from index of state value.
+        len = sscanf(&line[i], "%c %d %d %d %d %d %u %u %u %u %u %d %d %d"
               " %d %d %d %u %u %lld %lu %u %u %u %u %u %u %u %d %d %d %d %u"
-              " %d %d %d %d %d %d %d %d %d", &dummy, name,
+              " %d %d %d %d %d %d %d %d %d",
               &st->state, &st->ppid, &dummy, &dummy, &dummy, &dummy, &st->flags,
               &dummy, &dummy, &dummy, &dummy, &st->utime, &st->stime, &st->cutime,
               &st->cstime, &st->pri, &st->nice, &st->numthreads, &dummy, &st->start_time,
@@ -323,14 +351,12 @@ _stat(const char *path, Stat *st)
      }
    fclose(f);
 
-   if (len != 44) return 0;
+   if (len != 42 || i == slen) return 0;
 
-   len = strlen(name);
-   if (len)
-     {
-        name[len-1] = '\0';
-        snprintf(st->name, sizeof(st->name), "%s", &name[1]);
-     }
+   p = strchr(line, ' ') + 2;
+   if ((!p) || (i < 2)) return 0;
+   line[i - 2] = '\0';
+   snprintf(st->name, sizeof(st->name), "%s", p);
 
    if (!tck) tck = sysconf(_SC_CLK_TCK);
 
@@ -392,7 +418,7 @@ _process_list_linux_get(void)
         p->ppid = st.ppid;
         p->uid = _uid(pid);
         p->cpu_id = st.psr;
-        p->start_time = st.start_time;
+        p->start = st.start_time;
         p->run_time = st.run_time;
         state = _process_state_name(st.state);
         snprintf(p->state, sizeof(p->state), "%s", state);
@@ -468,7 +494,7 @@ proc_info_by_pid(int pid)
    p->ppid = st.ppid;
    p->uid = _uid(pid);
    p->cpu_id = st.psr;
-   p->start_time = st.start_time;
+   p->start = st.start_time;
    p->run_time = st.run_time;
    state = _process_state_name(st.state);
    snprintf(p->state, sizeof(p->state), "%s", state);
@@ -502,7 +528,7 @@ _proc_get(Proc_Info *p, struct kinfo_proc *kp)
    p->ppid = kp->p_ppid;
    p->uid = kp->p_uid;
    p->cpu_id = kp->p_cpuid;
-   p->start_time = kp->p_ustart_sec;
+   p->start = kp->p_ustart_sec;
    p->run_time = kp->p_uutime_sec + kp->p_ustime_sec +
                  (kp->p_uutime_usec / 1000000) + (kp->p_ustime_usec / 1000000);
 
@@ -783,7 +809,7 @@ _proc_pidinfo(size_t pid)
    p->cpu_time = taskinfo.ptinfo.pti_total_user +
       taskinfo.ptinfo.pti_total_system;
    p->cpu_time /= 10000000;
-   p->start_time = taskinfo.pbsd.pbi_start_tvsec;
+   p->start = taskinfo.pbsd.pbi_start_tvsec;
    state = _process_state_name(taskinfo.pbsd.pbi_status);
    snprintf(p->state, sizeof(p->state), "%s", state);
    p->mem_size = p->mem_virt = taskinfo.ptinfo.pti_virtual_size;
@@ -872,7 +898,7 @@ proc_info_by_pid(int pid)
    p->cpu_time = taskinfo.ptinfo.pti_total_user +
       taskinfo.ptinfo.pti_total_system;
    p->cpu_time /= 10000000;
-   p->start_time = taskinfo.pbsd.pbi_start_tvsec;
+   p->start = taskinfo.pbsd.pbi_start_tvsec;
    state = _process_state_name(taskinfo.pbsd.pbi_status);
    snprintf(p->state, sizeof(p->state), "%s", state);
    p->mem_size = p->mem_virt = taskinfo.ptinfo.pti_virtual_size;
@@ -1017,7 +1043,7 @@ _proc_thread_info(struct kinfo_proc *kp, Eina_Bool is_thread)
    snprintf(p->wchan, sizeof(p->wchan), "%s", kp->ki_wmesg);
    p->mem_virt = kp->ki_size;
    p->mem_rss = MEMSIZE(kp->ki_rssize) * MEMSIZE(pagesize);
-   p->start_time = kp->ki_start.tv_sec;
+   p->start = kp->ki_start.tv_sec;
    p->mem_size = p->mem_virt;
    p->nice = kp->ki_nice - NZERO;
    p->priority = kp->ki_pri.pri_level - PZERO;
@@ -1526,6 +1552,6 @@ proc_sort_by_age(const void *p1, const void *p2)
 {
    const Proc_Info *c1 = p1, *c2 = p2;
 
-   return c1->start_time - c2->start_time;
+   return c1->start - c2->start;
 }
 

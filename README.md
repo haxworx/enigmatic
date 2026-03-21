@@ -13,7 +13,7 @@
 
 ## Overview
 
-**Disk streaming, system monitoring, and querying toolkit**
+**Enlightened system monitoring, and querying toolkit**
 
 Enigmatic is a powerful toolkit that provides disk streaming, system monitoring, logging, and querying capabilities. Designed with developers in mind, it features an event-driven client API and an efficient daemon for resource tracking.
 
@@ -52,7 +52,7 @@ $ sudo dnf install efl-devel meson ninja-build gcc
 To install Enigmatic, clone the repository and follow the build instructions using Meson and Ninja:
 
 ```sh
-$ git clone https://github.com/your-repo/enigmatic.git
+$ git clone https://git.enlightenment.org/netstar/enigmatic.git
 $ cd enigmatic
 $ meson setup build
 $ ninja -C build

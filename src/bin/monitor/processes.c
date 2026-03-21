@@ -167,7 +167,7 @@ enigmatic_monitor_processes(Enigmatic *enigmatic, Eina_Hash **cache_hash)
         Eina_Bool found = 0;
         EINA_LIST_FOREACH(processes, l, p1)
           {
-             if ((p1->pid == p2->pid) && (p1->start_time == p2->start_time))
+             if ((p1->pid == p2->pid) && (p1->start == p2->start))
                {
                   found = 1;
                   break;
