@@ -1,5 +1,9 @@
 # Enigmatic
 
+As a historical record.
+
+This is probably the last time I write a project without using AI.
+
 ## Table of Contents
 
 1. [Overview](#overview)
