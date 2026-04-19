@@ -3,51 +3,117 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <limits.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <sys/wait.h>
 #include "enigmatic_util.h"
 
-// Having clients launch the daemon on-demand isn't really ideal.
-// For the sake of testing's sake, launch and then see if we have
-// a pidfile after a second.
-//
-// Spinning up enigmatic daemon and then shutting it down, takes
-// some time (not much but some). It should really "stick" around.
-//
-// There's also a race between a shutdown (enigmatic -s) and a
-// subsequent launch where the daemon could be shutting down and
-// this little helper thinks it has successfully launched.
+static char *
+_enigmatic_path_find(void)
+{
+   char exe[PATH_MAX], dir[PATH_MAX], path[PATH_MAX * 2];
+   ssize_t len;
+
+   len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+   if (len <= 0)
+     return strdup("enigmatic");
+
+   exe[len] = '\0';
+   snprintf(dir, sizeof(dir), "%s", exe);
+
+   char *slash = strrchr(dir, '/');
+   if (!slash)
+     return strdup("enigmatic");
+   *slash = '\0';
+
+   snprintf(path, sizeof(path), "%s/enigmatic", dir);
+   if (!access(path, X_OK))
+     return strdup(path);
+
+   snprintf(path, sizeof(path), "%s/../enigmatic", dir);
+   if (!access(path, X_OK))
+     return strdup(path);
+
+   return strdup("enigmatic");
+}
+
+static Eina_Bool
+_enigmatic_ping(void)
+{
+   pid_t pid;
+   int status = 0;
+   char *path = _enigmatic_path_find();
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(path, 0);
+
+   pid = fork();
+   if (pid == -1)
+     {
+        free(path);
+        return 0;
+     }
+   else if (!pid)
+     {
+        execlp(path, path, "-p", NULL);
+        _exit(127);
+     }
+
+   waitpid(pid, &status, 0);
+   free(path);
+
+   return (WIFEXITED(status) && (WEXITSTATUS(status) == 0));
+}
 
 static void
 launch(void)
 {
-   char *paths = getenv("PATH");
-   char path[PATH_MAX];
-   char *t;
-   struct stat st;
-   int ok = 0;
+   char *path = _enigmatic_path_find();
+   if (!path) _exit(1);
+   execlp(path, path, NULL);
+   free(path);
+   _exit(1);
+}
 
-   if (!paths) return;
+static Eina_Bool
+_pidfile_proc_alive(void)
+{
+   FILE *f;
+   char *path;
+   char buf[32];
+   long pid;
+   Eina_Bool alive = 0;
 
-   t = strtok(paths, ":");
-   while (t)
+   path = enigmatic_pidfile_path();
+   if (!path) return 0;
+
+   f = fopen(path, "r");
+   if (!f)
      {
-        snprintf(path, sizeof(path), "%s/%s", t, "enigmatic");
-        if ((stat(path, &st)) == 0)
+        free(path);
+        return 0;
+     }
+
+   if (fgets(buf, sizeof(buf), f))
+     {
+        pid = strtol(buf, NULL, 10);
+        if (pid > 1)
           {
-             ok = 1;
-             break;
+             if (kill((pid_t) pid, 0) == 0 || errno == EPERM)
+               alive = 1;
           }
-        t = strtok(NULL, ":");
      }
-   if (ok)
-     {
-        char *args[2];
-        args[0] = path;
-        args[1] = NULL;
-        execv(args[0], args);
-     }
+
+   fclose(f);
+   free(path);
+   return alive;
+}
+
+static Eina_Bool
+_daemon_ready(void)
+{
+   if (!_pidfile_proc_alive()) return 0;
+   return _enigmatic_ping();
 }
 
 int
@@ -57,6 +123,16 @@ main(int argc, char **argv)
    int running = 0;
 
    signal(SIGCHLD, SIG_IGN);
+
+   if (_daemon_ready()) return 0;
+
+   /* If an old instance is shutting down, wait briefly for it to disappear. */
+   for (int i = 0; i < 20; i++)
+     {
+        if (_daemon_ready()) return 0;
+        if (!_pidfile_proc_alive()) break;
+        usleep(100000);
+     }
 
    pid = fork();
    if (pid == -1)
@@ -73,17 +149,15 @@ main(int argc, char **argv)
      }
    else
      {
-        struct stat st;
-        char *path = enigmatic_pidfile_path();
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < 60; i++)
           {
-             if (stat(path, &st) != -1)
+             if (_daemon_ready())
                running = 1;
-             else running = 0;
-
-             usleep(1000000 / 20);
+             else
+               running = 0;
+             if (running) break;
+             usleep(1000000 / 10);
           }
-        free(path);
      }
 
    return !running;

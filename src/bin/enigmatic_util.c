@@ -3,6 +3,68 @@
 #include <Ecore_File.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <errno.h>
+
+static char *
+_tool_path_find(const char *tool)
+{
+   char exe[PATH_MAX], dir[PATH_MAX], path[PATH_MAX * 2];
+   ssize_t len;
+
+   len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+   if (len <= 0)
+     return strdup(tool);
+
+   exe[len] = '\0';
+   snprintf(dir, sizeof(dir), "%s", exe);
+
+   char *slash = strrchr(dir, '/');
+   if (!slash)
+     return strdup(tool);
+   *slash = '\0';
+
+   snprintf(path, sizeof(path), "%s/%s", dir, tool);
+   if (!access(path, X_OK))
+     return strdup(path);
+
+   snprintf(path, sizeof(path), "%s/../%s", dir, tool);
+   if (!access(path, X_OK))
+     return strdup(path);
+
+   return strdup(tool);
+}
+
+static Eina_Bool
+_tool_run(const char *tool, const char *arg)
+{
+   pid_t pid;
+   int status = 0;
+   char *path = _tool_path_find(tool);
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(path, 0);
+
+   pid = fork();
+   if (pid == -1)
+     {
+        free(path);
+        return 0;
+     }
+   else if (!pid)
+     {
+        if (arg)
+          execlp(path, path, arg, NULL);
+        else
+          execlp(path, path, NULL);
+        _exit(127);
+     }
+
+   waitpid(pid, &status, 0);
+   free(path);
+
+   return (WIFEXITED(status) && (WEXITSTATUS(status) == 0));
+}
 
 static char *
 _pidfile_path(void)
@@ -77,40 +139,112 @@ enigmatic_pidfile_pid_get(const char *path)
    char buf[32];
    FILE *f = fopen(path, "r");
    if (!f)
-     ERROR("No PID file.");
+     return 0;
 
    if (fgets(buf, sizeof(buf), f))
      pid = atoll(buf);
    else
-     ERROR("No PID file value.");
+     {
+        fclose(f);
+        return 0;
+     }
 
    fclose(f);
 
    return pid;
 }
 
-void
+static Eina_Bool
+_pid_is_enigmatic(pid_t pid)
+{
+#if defined(__linux__)
+   char path[PATH_MAX];
+   char name[32];
+   FILE *f;
+
+   if (pid <= 1) return 0;
+
+   snprintf(path, sizeof(path), "/proc/%d/comm", pid);
+   f = fopen(path, "r");
+   if (!f) return 0;
+
+   if (!fgets(name, sizeof(name), f))
+     {
+        fclose(f);
+        return 0;
+     }
+   fclose(f);
+
+   char *nl = strchr(name, '\n');
+   if (nl) *nl = '\0';
+
+   return !strcmp(name, PACKAGE);
+#else
+   return pid > 1;
+#endif
+}
+
+Eina_Bool
 enigmatic_terminate(void)
 {
    char *path = _pidfile_path();
    pid_t pid;
+   Eina_Bool ok = 0;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(path, 0);
+
+   if (!ecore_file_exists(path))
+     {
+        free(path);
+        return 0;
+     }
 
    pid = enigmatic_pidfile_pid_get(path);
-   kill(pid, SIGINT);
+   if (pid <= 1)
+     goto done;
 
+   if (!_pid_is_enigmatic(pid))
+     goto done;
+
+   if (kill(pid, SIGTERM) == -1)
+     {
+        if (errno == ESRCH)
+          {
+             ecore_file_remove(path);
+             ok = 1;
+          }
+        goto done;
+     }
+
+   for (int i = 0; i < 50; i++)
+     {
+        if (kill(pid, 0) == -1)
+          {
+             if (errno == ESRCH)
+               {
+                  ecore_file_remove(path);
+                  ok = 1;
+               }
+             break;
+          }
+        usleep(100000);
+     }
+
+done:
    free(path);
+   return ok;
 }
 
 Eina_Bool
 enigmatic_launch(void)
 {
-   return !system(PACKAGE"_start");
+   return _tool_run(PACKAGE"_start", NULL);
 }
 
 Eina_Bool
 enigmatic_running(void)
 {
-   return !system("enigmatic -p");
+   return _tool_run(PACKAGE, "-p");
 }
 
 char *

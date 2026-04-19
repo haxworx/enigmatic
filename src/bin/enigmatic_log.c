@@ -540,7 +540,7 @@ enigmatic_log_diff(Enigmatic *enigmatic, Message msg, int64_t value)
         enigmatic_log_write(enigmatic, (char *) &change, sizeof(Change));
         enigmatic_log_write(enigmatic, (char *) &diff, sizeof(int8_t));
      }
-   else if ((value >= -32678) && (value <= 32767))
+   else if ((value >= -32768) && (value <= 32767))
      {
         change = CHANGE_I16;
         int16_t diff = (int16_t) value & 0xffff;

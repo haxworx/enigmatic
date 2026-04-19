@@ -9,7 +9,7 @@
 
 #include "system/machine.h"
 #include "system/file_systems.h"
-#include "system/process_stubby.h"
+#include "system/process.h"
 
 #include <Eio.h>
 

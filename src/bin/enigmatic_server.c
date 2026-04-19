@@ -1,6 +1,7 @@
 #include "config.h"
 #include "enigmatic_server.h"
 #include "Enigmatic.h"
+#include <signal.h>
 
 static Enigmatic_Server *server = NULL;
 
@@ -13,6 +14,7 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
    Interval interval;
    int sent = 0;
    Eina_Bool contentious_update = 0;
+   Eina_Bool stop = 0;
    Ecore_Con_Event_Client_Data *ev = event;
 
    msg = ev->data;
@@ -36,6 +38,11 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
         contentious_update = 1;
         interval = INTERVAL_NORMAL;
      }
+   else if (!strcmp(msg, "STOP"))
+     {
+        stop = 1;
+        sent = ecore_con_client_send(ev->client, "STOPPING", 9);
+     }
 
    if (contentious_update)
      {
@@ -47,6 +54,9 @@ _enigmatic_server_client_data_cb(void *data, int type, void *event)
 
    if (sent)
      ecore_con_client_flush(ev->client);
+
+   if (stop)
+     raise(SIGTERM);
 
    return ECORE_CALLBACK_RENEW;
 }

@@ -1,5 +1,6 @@
 #include "Enigmatic_Client.h"
 #include <Elementary.h>
+#include <Ecore_File.h>
 
 #define NOISY 0
 
@@ -8,15 +9,32 @@ static Ecore_Exe *exe = NULL;
 typedef struct
 {
    const char *name;
+   const char *app;
    const char *command;
    const char *speech_format;
 } Speech_Backend;
 
 static Speech_Backend backends[] = {
-   { .name  = "Festival", .command = "festival -i --pipe", .speech_format = "(SayText \"%s\")\n" },
+   { .name = "Festival", .app = "festival", .command = "festival -i --pipe", .speech_format = "(SayText \"%s\")\n" },
+   { .name = "eSpeak NG", .app = "espeak-ng", .command = "espeak-ng --stdin", .speech_format = "%s\n" },
+   { .name = "eSpeak", .app = "espeak", .command = "espeak --stdin", .speech_format = "%s\n" },
 };
 
 static Speech_Backend *speech_backend = NULL;
+
+static Speech_Backend *
+speech_backend_find(void)
+{
+   unsigned int n = sizeof(backends) / sizeof(backends[0]);
+
+   for (unsigned int i = 0; i < n; i++)
+     {
+        if (ecore_file_app_installed(backends[i].app))
+          return &backends[i];
+     }
+
+   return NULL;
+}
 
 static void
 send_speech(const char *fmt, ...)
@@ -29,6 +47,11 @@ send_speech(const char *fmt, ...)
    va_start(ap, fmt);
    vsnprintf(buf, sizeof(buf), fmt, ap);
    va_end(ap);
+
+   printf("%s", buf);
+   fflush(stdout);
+
+   if ((!speech_backend) || (!exe)) return;
 
    len = strlen(buf) + strlen(speech_backend->speech_format) + 1;
    text = malloc(len);
@@ -44,7 +67,7 @@ static void
 cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
 {
    Eina_List *l;
-   Proc_Stubby *proc;
+   Proc_Info_Log *proc;
 
    int cpu_count = eina_list_count(s->cores);
 
@@ -145,15 +168,15 @@ cb_file_system_del(Enigmatic_Client *client, Enigmatic_Client_Event *event, void
 static void
 cb_process_add(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
 {
-   //Proc_Stubby *proc = event->data;
-   //send_speech("add %i => %s\n", proc->pid, proc->command);
+   Proc_Info_Log *proc = event->data;
+   send_speech("add %i => %s\n", proc->pid, proc->command);
 }
 
 static void
 cb_process_del(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
 {
-   //Proc_Stubby *proc = event->data;
-//   send_speech("del %i => %s\n", proc->pid, proc->command);
+   Proc_Info_Log *proc = event->data;
+   send_speech("del %i => %s\n", proc->pid, proc->command);
 }
 
 static void
@@ -195,8 +218,6 @@ monitor(void)
 
    ecore_main_loop_begin();
 
-   enigmatic_terminate();
-
    enigmatic_client_del(client);
 }
 
@@ -221,14 +242,28 @@ stdout_handler(void *data, int type EINA_UNUSED, void *event)
 int
 elm_main(int argc, char **argv)
 {
-   speech_backend = &backends[0];
-   printf("Using %s\n", speech_backend->name);
+   speech_backend = speech_backend_find();
+   if (!speech_backend)
+     {
+        fprintf(stderr, "No supported speech backend found (tried: festival, espeak-ng, espeak). Falling back to console output only.\n");
+     }
+   else
+     {
+        printf("Using %s\n", speech_backend->name);
 
-   exe = ecore_exe_pipe_run(speech_backend->command, ECORE_EXE_PIPE_WRITE | ECORE_EXE_PIPE_READ | ECORE_EXE_PIPE_READ_LINE_BUFFERED |
-                            ECORE_EXE_PIPE_ERROR | ECORE_EXE_PIPE_ERROR_LINE_BUFFERED, NULL);
-
-   ecore_event_handler_add(ECORE_EXE_EVENT_DATA, stdout_handler, NULL);
-   ecore_event_handler_add(ECORE_EXE_EVENT_ERROR, stdout_handler, NULL);
+        exe = ecore_exe_pipe_run(speech_backend->command, ECORE_EXE_PIPE_WRITE | ECORE_EXE_PIPE_READ | ECORE_EXE_PIPE_READ_LINE_BUFFERED |
+                                 ECORE_EXE_PIPE_ERROR | ECORE_EXE_PIPE_ERROR_LINE_BUFFERED, NULL);
+        if (!exe)
+          {
+             fprintf(stderr, "Failed to start speech backend command: %s. Falling back to console output only.\n",
+                     speech_backend->command);
+          }
+        else
+          {
+             ecore_event_handler_add(ECORE_EXE_EVENT_DATA, stdout_handler, NULL);
+             ecore_event_handler_add(ECORE_EXE_EVENT_ERROR, stdout_handler, NULL);
+          }
+     }
 
    monitor();
 

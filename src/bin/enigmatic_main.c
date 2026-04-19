@@ -21,9 +21,13 @@ system_info_free(System_Info *info)
 }
 
 static Eina_Bool
-cb_shutdown(void *data, int type, void *event EINA_UNUSED)
+cb_shutdown(void *data, int type EINA_UNUSED, void *event)
 {
+   Ecore_Event_Signal_Exit *ev = event;
    Enigmatic *enigmatic = data;
+
+   if ((!ev) || (!ev->terminate))
+     return ECORE_CALLBACK_RENEW;
 
    if (enigmatic->thread)
      {
@@ -43,7 +47,7 @@ cb_shutdown(void *data, int type, void *event EINA_UNUSED)
 
    ecore_main_loop_quit();
 
-   return 0;
+   return ECORE_CALLBACK_DONE;
 }
 
 static void
@@ -209,8 +213,9 @@ int main(int argc, char **argv)
           exit(!enigmatic_query_send("interval-slow"));
         else if (!strcmp(argv[i], "-s"))
           {
-             enigmatic_terminate();
-             exit(0);
+             if (enigmatic_query_send("STOP"))
+               exit(0);
+             exit(!enigmatic_terminate());
           }
      }
 

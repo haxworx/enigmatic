@@ -19,6 +19,7 @@
 static uint32_t specialfriend[4] = { HEADER_MAGIC, HEADER_MAGIC, HEADER_MAGIC, HEADER_MAGIC };
 
 #define FLOAT_VALID(x) ((x < 0) ? 0 : (x))
+#define BROADCAST_SEEK_MIN_SIZE (8 * 1024 * 1024)
 
 static void
 free_snapshot(Snapshot *s)
@@ -43,9 +44,45 @@ free_snapshot(Snapshot *s)
    EINA_LIST_FREE(s->file_systems, fs)
      free(fs);
 
-   Proc_Stubby *proc;
+   Proc_Info_Log *proc;
    EINA_LIST_FREE(s->processes, proc)
-     proc_stubby_free(proc);
+     free(proc);
+}
+
+static off_t
+broadcast_offset_find(Enigmatic_Client *client, int fd, off_t file_size)
+{
+   const size_t broadcast_size = sizeof(Header) + sizeof(Interval) + sizeof(specialfriend);
+   Header hdr;
+   uint32_t friend_buf[4];
+   off_t start;
+   uint8_t *map;
+
+   if (!client) return 0;
+   if (fd == -1) return 0;
+   if (client->compressed) return 0;
+   if (client->replay.enabled) return 0;
+   if (file_size < (off_t) broadcast_size) return 0;
+   if (file_size < BROADCAST_SEEK_MIN_SIZE) return 0;
+
+   map = mmap(NULL, (size_t) file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+   if (map == MAP_FAILED) return 0;
+
+   start = file_size - (off_t) broadcast_size;
+   for (off_t i = start; i >= 0; i--)
+     {
+        memcpy(&hdr, map + i, sizeof(hdr));
+        if (hdr.event != EVENT_BROADCAST) continue;
+
+        memcpy(friend_buf, map + i + sizeof(Header) + sizeof(Interval), sizeof(friend_buf));
+        if (memcmp(friend_buf, specialfriend, sizeof(specialfriend))) continue;
+
+        munmap(map, (size_t) file_size);
+        return i;
+     }
+
+   munmap(map, (size_t) file_size);
+   return 0;
 }
 
 static void
@@ -130,21 +167,29 @@ change_find(Enigmatic_Client *client)
    switch (change)
      {
         case CHANGE_I8:
+           if ((client->buf.index + sizeof(int8_t)) > client->buf.length)
+             ERROR("Corrupt log stream: short CHANGE_I8 payload");
            d8 = (int8_t *) &client->buf.data[client->buf.index];
            value = *d8;
            offset = sizeof(int8_t);
            break;
         case CHANGE_I16:
+           if ((client->buf.index + sizeof(int16_t)) > client->buf.length)
+             ERROR("Corrupt log stream: short CHANGE_I16 payload");
            d16 = (int16_t *) &client->buf.data[client->buf.index];
            value = *d16;
            offset = sizeof(int16_t);
            break;
         case CHANGE_I32:
+           if ((client->buf.index + sizeof(int32_t)) > client->buf.length)
+             ERROR("Corrupt log stream: short CHANGE_I32 payload");
            d32 = (int32_t *) &client->buf.data[client->buf.index];
            value = *d32;
            offset = sizeof(int32_t);
            break;
         case CHANGE_I64:
+           if ((client->buf.index + sizeof(int64_t)) > client->buf.length)
+             ERROR("Corrupt log stream: short CHANGE_I64 payload");
            d64 = (int64_t *) &client->buf.data[client->buf.index];
            value = *d64;
            offset = sizeof(int64_t);
@@ -161,10 +206,37 @@ change_find(Enigmatic_Client *client)
 }
 
 static void
+proc_log_string_set(char *dst, size_t len, const char *src)
+{
+   if (!dst || !len) return;
+   snprintf(dst, len, "%s", src ? src : "");
+}
+
+static const char *
+buf_string_read(Enigmatic_Client *client)
+{
+   const char *cp;
+   const uint8_t *start, *end, *nul;
+
+   if (client->buf.index >= client->buf.length)
+     ERROR("Corrupt log stream: short string payload");
+
+   start = &client->buf.data[client->buf.index];
+   end = &client->buf.data[client->buf.length];
+   nul = memchr(start, '\0', end - start);
+   if (!nul)
+     ERROR("Corrupt log stream: unterminated string payload");
+
+   cp = (const char *) start;
+   client->buf.index += (uint32_t) ((nul - start) + 1);
+   return cp;
+}
+
+static void
 message_processes(Enigmatic_Client *client)
 {
    Eina_List *l, *l2;
-   Proc_Stubby *proc, *p2;
+   Proc_Info_Log *proc, *p2;
    Eina_Bool update = 1;
    int64_t change;
    Snapshot *snapshot;
@@ -178,18 +250,15 @@ message_processes(Enigmatic_Client *client)
            if (!snapshot->processes) update = 0;
            for (int i = 0; i < msg->number; i++)
              {
-                proc = malloc(sizeof(Proc_Stubby));
+                Eina_Bool found = 0;
+
+                if ((client->buf.index + sizeof(Proc_Info_Log)) > client->buf.length)
+                  ERROR("Corrupt log stream: short process refresh payload");
+                proc = malloc(sizeof(Proc_Info_Log));
                 EINA_SAFETY_ON_NULL_RETURN(proc);
 
-                memcpy(proc, &client->buf.data[client->buf.index], sizeof(Proc_Stubby));
-
-                client->buf.index += sizeof(Proc_Stubby);
-                char *cp = (char *) &client->buf.data[client->buf.index];
-                proc->command = strdup(cp);
-                client->buf.index += (strlen(proc->command) + 1);
-                cp = (char *) &client->buf.data[client->buf.index];
-                proc->path = strdup(cp);
-                client->buf.index += (strlen(proc->path) + 1);
+                memcpy(proc, &client->buf.data[client->buf.index], sizeof(Proc_Info_Log));
+                client->buf.index += sizeof(Proc_Info_Log);
 
                 if (!update)
                   snapshot->processes = eina_list_append(snapshot->processes, proc);
@@ -199,27 +268,26 @@ message_processes(Enigmatic_Client *client)
                        {
                           if (p2->pid == proc->pid)
                             {
-                               p2->mem_size = proc->mem_size;
+                               *p2 = *proc;
+                               found = 1;
+                               break;
                             }
                        }
-                     proc_stubby_free(proc);
+                     if (found) free(proc);
+                     else snapshot->processes = eina_list_append(snapshot->processes, proc);
                   }
              }
            break;
         case MESG_ADD:
            for (int i = 0; i < msg->number; i++)
              {
-                proc = malloc(sizeof(Proc_Stubby));
+                if ((client->buf.index + sizeof(Proc_Info_Log)) > client->buf.length)
+                  ERROR("Corrupt log stream: short process add payload");
+                proc = malloc(sizeof(Proc_Info_Log));
                 EINA_SAFETY_ON_NULL_RETURN(proc);
 
-                memcpy(proc, &client->buf.data[client->buf.index], sizeof(Proc_Stubby));
-                client->buf.index += sizeof(Proc_Stubby);
-                char *cp = (char *) &client->buf.data[client->buf.index];
-                proc->command = strdup(cp);
-                client->buf.index += (strlen(proc->command) + 1);
-                cp = (char *) &client->buf.data[client->buf.index];
-                proc->path = strdup(cp);
-                client->buf.index += (strlen(proc->path) + 1);
+                memcpy(proc, &client->buf.data[client->buf.index], sizeof(Proc_Info_Log));
+                client->buf.index += sizeof(Proc_Info_Log);
                 snapshot->processes = eina_list_append(snapshot->processes, proc);
                 if ((client->event_process_add.callback) && (callback_fire(client)))
                   {
@@ -234,19 +302,89 @@ message_processes(Enigmatic_Client *client)
              }
            break;
         case MESG_MOD:
-           change = change_find(client);
-           EINA_LIST_FOREACH(snapshot->processes, l, proc)
+           if (client->change == CHANGE_STRING)
              {
-                if (proc->pid == msg->number)
+                const char *cp = buf_string_read(client);
+
+                EINA_LIST_FOREACH(snapshot->processes, l, proc)
                   {
-                     if (msg->object_type == PROCESS_MEM_SIZE)
-                       proc->mem_size += (change * 4096);
-                     else if (msg->object_type == PROCESS_CPU_USAGE)
-                       proc->cpu_usage = change;  // XXX value not delta.
-                     else if (msg->object_type == PROCESS_NUM_THREAD)
-                       proc->numthreads = change; // XXX value not delta.
+                     if (proc->pid != msg->number) continue;
+
+                     if (msg->object_type == PROCESS_COMMAND)
+                       proc_log_string_set(proc->command, sizeof(proc->command), cp);
+                     else if (msg->object_type == PROCESS_ARGUMENTS)
+                       proc_log_string_set(proc->arguments, sizeof(proc->arguments), cp);
+                     else if (msg->object_type == PROCESS_STATE)
+                       proc_log_string_set(proc->state, sizeof(proc->state), cp);
+                     else if (msg->object_type == PROCESS_WCHAN)
+                       proc_log_string_set(proc->wchan, sizeof(proc->wchan), cp);
+                     else if (msg->object_type == PROCESS_THREAD_NAME)
+                       proc_log_string_set(proc->thread_name, sizeof(proc->thread_name), cp);
+                     else if (msg->object_type == PROCESS_PATH)
+                       proc_log_string_set(proc->path, sizeof(proc->path), cp);
+                     break;
+                  }
+             }
+           else
+             {
+                change = change_find(client);
+                EINA_LIST_FOREACH(snapshot->processes, l, proc)
+                  {
+                     if (proc->pid != msg->number) continue;
+
+                     if (msg->object_type == PROCESS_PPID)
+                       proc->ppid += change;
+                     else if (msg->object_type == PROCESS_UID)
+                       proc->uid += change;
+                     else if (msg->object_type == PROCESS_NICE)
+                       proc->nice += change;
                      else if (msg->object_type == PROCESS_PRIORITY)
-                       proc->priority = change;   // XXX value not delta.
+                       proc->priority += change;
+                     else if (msg->object_type == PROCESS_CPU_ID)
+                       proc->cpu_id += change;
+                     else if (msg->object_type == PROCESS_NUM_THREAD)
+                       proc->numthreads += change;
+                     else if (msg->object_type == PROCESS_CPU_TIME)
+                       proc->cpu_time += change;
+                     else if (msg->object_type == PROCESS_RUN_TIME)
+                       proc->run_time += change;
+                     else if (msg->object_type == PROCESS_START)
+                       proc->start += change;
+                     else if (msg->object_type == PROCESS_MEM_SIZE)
+                       proc->mem_size += (change * 4096);
+                     else if (msg->object_type == PROCESS_MEM_RSS)
+                       proc->mem_rss += (change * 4096);
+                     else if (msg->object_type == PROCESS_MEM_SHARED)
+                       proc->mem_shared += (change * 4096);
+                     else if (msg->object_type == PROCESS_MEM_VIRT)
+                       proc->mem_virt += (change * 4096);
+                     else if (msg->object_type == PROCESS_NET_IN)
+                       proc->net_in += change;
+                     else if (msg->object_type == PROCESS_NET_OUT)
+                       proc->net_out += change;
+                     else if (msg->object_type == PROCESS_DISK_READ)
+                       proc->disk_read += change;
+                     else if (msg->object_type == PROCESS_DISK_WRITE)
+                       proc->disk_write += change;
+                     else if (msg->object_type == PROCESS_NUM_FILES)
+                       proc->numfiles += change;
+                     else if (msg->object_type == PROCESS_WAS_ZERO)
+                       proc->was_zero = !!((int64_t) proc->was_zero + change);
+                     else if (msg->object_type == PROCESS_IS_KERNEL)
+                       proc->is_kernel = !!((int64_t) proc->is_kernel + change);
+                     else if (msg->object_type == PROCESS_IS_NEW)
+                       proc->is_new = !!((int64_t) proc->is_new + change);
+                     else if (msg->object_type == PROCESS_TID)
+                       proc->tid += change;
+                     else if (msg->object_type == PROCESS_FDS_COUNT)
+                       proc->fds_count += change;
+                     else if (msg->object_type == PROCESS_THREADS_COUNT)
+                       proc->threads_count += change;
+                     else if (msg->object_type == PROCESS_CHILDREN_COUNT)
+                       proc->children_count += change;
+                     else if (msg->object_type == PROCESS_CPU_USAGE)
+                       proc->cpu_usage += change;
+                     break;
                   }
              }
            break;
@@ -265,7 +403,7 @@ message_processes(Enigmatic_Client *client)
                                free(ev);
                             }
                        }
-                     proc_stubby_free(proc);
+                     free(proc);
                      snapshot->processes = eina_list_remove_list(snapshot->processes, l);
                   }
              }
@@ -970,6 +1108,9 @@ message_mod(Enigmatic_Client *client)
 {
    Message *msg = &client->message;
 
+   if ((client->buf.index + sizeof(Change)) > client->buf.length)
+     ERROR("Corrupt log stream: short change header");
+
    memcpy(&client->change, &client->buf.data[client->buf.index], sizeof(Change));
    client->buf.index += sizeof(Change);
 
@@ -1010,10 +1151,38 @@ message_mod(Enigmatic_Client *client)
         case FILE_SYSTEM_USED:
            message_file_system(client);
            break;
-        case PROCESS_MEM_SIZE:
-        case PROCESS_CPU_USAGE:
-        case PROCESS_NUM_THREAD:
+        case PROCESS_PPID:
+        case PROCESS_UID:
+        case PROCESS_NICE:
         case PROCESS_PRIORITY:
+        case PROCESS_CPU_ID:
+        case PROCESS_NUM_THREAD:
+        case PROCESS_CPU_TIME:
+        case PROCESS_RUN_TIME:
+        case PROCESS_START:
+        case PROCESS_MEM_SIZE:
+        case PROCESS_MEM_RSS:
+        case PROCESS_MEM_SHARED:
+        case PROCESS_MEM_VIRT:
+        case PROCESS_NET_IN:
+        case PROCESS_NET_OUT:
+        case PROCESS_DISK_READ:
+        case PROCESS_DISK_WRITE:
+        case PROCESS_COMMAND:
+        case PROCESS_ARGUMENTS:
+        case PROCESS_STATE:
+        case PROCESS_WCHAN:
+        case PROCESS_NUM_FILES:
+        case PROCESS_WAS_ZERO:
+        case PROCESS_IS_KERNEL:
+        case PROCESS_IS_NEW:
+        case PROCESS_TID:
+        case PROCESS_THREAD_NAME:
+        case PROCESS_FDS_COUNT:
+        case PROCESS_THREADS_COUNT:
+        case PROCESS_CHILDREN_COUNT:
+        case PROCESS_PATH:
+        case PROCESS_CPU_USAGE:
            message_processes(client);
            break;
         default:
@@ -1056,6 +1225,9 @@ message_del(Enigmatic_Client *client)
 static void
 event_message(Enigmatic_Client *client)
 {
+   if ((client->buf.index + sizeof(Message)) > client->buf.length)
+     ERROR("Corrupt log stream: short message header");
+
    memcpy(&client->message, &client->buf.data[client->buf.index], sizeof(Message));
    client->buf.index += sizeof(Message);
    switch (client->message.type)
@@ -1091,6 +1263,9 @@ event_block_end(Enigmatic_Client *client)
 static void
 event_broadcast(Enigmatic_Client *client)
 {
+   if ((client->buf.index + sizeof(Interval) + sizeof(specialfriend)) > client->buf.length)
+     ERROR("Corrupt log stream: short broadcast header");
+
    memcpy(&client->interval, &client->buf.data[client->buf.index], sizeof(Interval));
    client->buf.index += sizeof(Interval);
    client->buf.index += sizeof(specialfriend);
@@ -1252,6 +1427,17 @@ enigmatic_client_read(Enigmatic_Client *client)
      {
         if (fstat(client->fd, &st) == -1)
           ERROR("fstat() %s\n", strerror(errno));
+
+        if (!client->offset)
+          {
+             off_t seek_offset = broadcast_offset_find(client, client->fd, st.st_size);
+             if (seek_offset > 0)
+               {
+                  if (lseek(client->fd, seek_offset, SEEK_SET) == (off_t) -1)
+                    ERROR("lseek() %s", strerror(errno));
+                  client->offset = seek_offset;
+               }
+          }
      }
    else
      {
@@ -1308,17 +1494,24 @@ enigmatic_client_read(Enigmatic_Client *client)
              EINA_SAFETY_ON_NULL_RETURN(dst);
 
              size_t pos = compressed_size;
-             size_t src_size = block_size - compressed_size;
+             size_t src_size = 0;
              size_t next_block = block_size;
+             size_t avail = client->zbuf.length - offset;
 
              for (;next_block; pos += src_size)
                {
                   uint8_t *src_ptr = src + pos;
                   size_t dec_size = block_size;
-                  src_size = block_size - pos;
+
+                  if (pos >= avail)
+                    ERROR("decompress: truncated frame");
+                  src_size = avail - pos;
+
                   next_block = LZ4F_decompress(dctx, dst, &dec_size, src_ptr, &src_size, NULL);
                   if (LZ4F_isError(next_block))
-                    ERROR("decompress: %s", LZ4F_getErrorName(status));
+                    ERROR("decompress: %s", LZ4F_getErrorName(next_block));
+                  if ((!src_size) && (!dec_size) && next_block)
+                    ERROR("decompress: stalled frame decode");
 
                   client->buf.length += dec_size;
                   void *tmp = realloc(client->buf.data, client->buf.length);
@@ -1379,11 +1572,9 @@ cb_file_modified(void *data, int type EINA_UNUSED, void *event EINA_UNUSED)
    else
      {
         client->retries++;
-        if (client->retries == 10)
+        if ((client->retries == 10) || ((client->retries % 100) == 0))
           {
-             fprintf(stderr, "ERROR: %s (%s)\n", client->filename, strerror(errno));
-             ecore_main_loop_quit();
-             return 0;
+             fprintf(stderr, "WARN: waiting for %s (%s)\n", client->filename, strerror(errno));
           }
         return 1;
      }
@@ -1662,4 +1853,3 @@ enigmatic_client_replay_time_end_set(Enigmatic_Client *client, uint32_t secs)
 {
    client->replay.end_time = secs;
 }
-

@@ -50,7 +50,7 @@ cb_event_change(Enigmatic_Client *client, Snapshot *s, void *data)
      printf("%s on %s => %"PRIu64" of %"PRIu64"\n", fs->mount, fs->path, (fs->usage.used >> 10), (fs->usage.total >> 10));
 
 #if NOISY
-   Proc_Stubby *proc;
+   Proc_Info_Log *proc;
    EINA_LIST_FOREACH(s->processes, l, proc)
      printf("pid: %i cmd %s pri: %i nthreads: %i mem: %"PRIu64" cpu: %i%%\n",
             proc->pid, proc->path, proc->priority, proc->numthreads, proc->mem_size >> 10, proc->cpu_usage);
@@ -144,14 +144,14 @@ cb_file_system_del(Enigmatic_Client *client, Enigmatic_Client_Event *event, void
 static void
 cb_process_add(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
 {
-   Proc_Stubby *proc = event->data;
+   Proc_Info_Log *proc = event->data;
    printf("add %i => %s\n", proc->pid, proc->command);
 }
 
 static void
 cb_process_del(Enigmatic_Client *client, Enigmatic_Client_Event *event, void *data)
 {
-   Proc_Stubby *proc = event->data;
+   Proc_Info_Log *proc = event->data;
    printf("del %i => %s\n", proc->pid, proc->command);
 }
 
@@ -193,8 +193,6 @@ follow(void)
    enigmatic_client_monitor_add(client, cb_event_change_init, cb_event_change, NULL);
 
    ecore_main_loop_begin();
-
-   enigmatic_terminate();
 
    enigmatic_client_del(client);
 }

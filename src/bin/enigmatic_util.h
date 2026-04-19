@@ -18,7 +18,7 @@ enigmatic_pidfile_delete(Enigmatic *enigmatic);
 uint32_t
 enigmatic_pidfile_pid_get(const char *path);
 
-void
+Eina_Bool
 enigmatic_terminate(void);
 
 Eina_Bool
